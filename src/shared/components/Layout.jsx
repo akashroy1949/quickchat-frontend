@@ -1,15 +1,28 @@
-import React from "react";
+// src/shared/components/Layout.jsx
 
-/**
- * Minimal Layout component for full-screen, full-width pages with a modern background.
- * No flex, no centering—just a normalized container.
- */
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import Footer from './Footer';
+
 const Layout = ({ children }) => {
-    return (
-        <div className="min-h-screen w-screen bg-dark-gradient dark:bg-dark-gradient transition-colors duration-300">
-            {children}
-        </div>
-    );
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header hidden on Home screen */}
+      {/* {!isHome && <Header />} */}
+
+      <main className="flex-1">{children}</main>
+
+      {/* Footer always visible */}
+      <Footer />
+    </div>
+  );
 };
 
 export default Layout;
