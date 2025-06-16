@@ -1,0 +1,6 @@
+.about-section-container .scroll-float .scroll-float-text,
+.faq-section-header .scroll-float .scroll-float-text,
+.features-section-header .scroll-float .scroll-float-text{
+    font-size: 50px !important;
+    font-weight: 700 !important;
+}
