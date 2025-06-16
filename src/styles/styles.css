@@ -1,6 +1,65 @@
 .about-section-container .scroll-float .scroll-float-text,
 .faq-section-header .scroll-float .scroll-float-text,
-.features-section-header .scroll-float .scroll-float-text{
+.features-section-header .scroll-float .scroll-float-text {
     font-size: 50px !important;
     font-weight: 700 !important;
+}
+
+.scroll-icon {
+    width: 30px;
+    height: 50px;
+    border: 2px solid #333;
+    border-radius: 20px;
+    position: fixed;
+    top: 85vh;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+    background: transparent;
+    padding: 0;
+    outline: none;
+    transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+    z-index: 1000;
+    opacity: 1;
+    filter: blur(0);
+}
+
+.scroll-icon:hover {
+    border-color: #666;
+}
+
+.scroll-icon:focus {
+    border-color: #666;
+    box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.3);
+}
+
+.scroll-icon::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    transform: translateX(-50%);
+    background-color: #333;
+    border-radius: 50%;
+    animation: scroll 2s infinite;
+}
+
+@keyframes scroll {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+}
+
+.scroll-icon-hidden {
+    opacity: 0;
+    filter: blur(5px);
+    pointer-events: none;
 }
