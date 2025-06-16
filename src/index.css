@@ -1,9 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+* {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
 body {
     @apply bg-dark-bg text-dark-text transition-colors duration-300;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #0a0a0a;
+    color: #ffffff;
+    letter-spacing: -0.025em;
+    font-weight: 400;
+    line-height: 1.6;
 }
 
 .dark {
@@ -12,6 +24,8 @@ body {
 
 .card-dark {
     @apply bg-dark-card text-dark-text shadow-xl;
+    background-color: #121212;
+    border: 1px solid #1a1a1a;
 }
 
 .accent-dark {
@@ -23,37 +37,61 @@ body {
 }
 
 .bg-dark-gradient {
-    background-image: linear-gradient(120deg, #23243a 0%, #181924 100%);
+    background-image: linear-gradient(120deg, #0a0a0a 0%, #121212 100%);
 }
 
 
 .accordion-item {
-    background-color: #18181b !important;
-    border: none !important;
+    background-color: #121212 !important;
+    border: 1px solid #1a1a1a !important;
     border-radius: 0.75rem !important;
     margin-bottom: 1rem;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 .accordion-button {
-    background-color: #18181b !important;
+    background-color: #121212 !important;
     color: #fff !important;
     border-radius: 0.75rem !important;
     box-shadow: none !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.025em !important;
 }
 
 .accordion-button:not(.collapsed) {
-    background-color: #232326 !important;
+    background-color: #1a1a1a !important;
     color: #fff !important;
 }
 
 .accordion-body {
-    background-color: #18181b !important;
+    background-color: #121212 !important;
     color: #fff !important;
     border-radius: 0 0 0.75rem 0.75rem !important;
+    font-family: 'Inter', sans-serif !important;
+    line-height: 1.6 !important;
+    letter-spacing: -0.025em !important;
 }
 
 /* Make accordion arrows (chevrons) white */
 .accordion-button::after {
     filter: brightness(0) invert(1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #2a2a2a;
 }

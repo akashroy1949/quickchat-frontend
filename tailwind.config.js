@@ -8,15 +8,19 @@ export default {
     theme: {
         extend: {
             colors: {
-                'dark-bg': '#181924',
-                'dark-card': '#23243a',
+                'dark-bg': '#0a0a0a',
+                'dark-card': '#121212',
                 'dark-accent': '#6366f1',
-                'dark-secondary': '#2e2f47',
-                'dark-text': '#e5e7eb',
+                'dark-secondary': '#1a1a1a',
+                'dark-text': '#ffffff',
                 'dark-muted': '#a1a1aa',
             },
             backgroundImage: {
-                'dark-gradient': 'linear-gradient(120deg, #23243a 0%, #181924 100%)',
+                'dark-gradient': 'linear-gradient(120deg, #0a0a0a 0%, #121212 100%)',
+            },
+            fontFamily: {
+                'sans': ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                'display': ['Inter', 'system-ui', 'sans-serif'],
             },
         },
     },
