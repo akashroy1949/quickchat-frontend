@@ -15,71 +15,12 @@ import FloatingIcons from "../../components/FloatingIcons/FloatingIcons";
 import React from "react";
 import ScrollFloat from "@/react-bits/TextAnimations/ScrollFloat/ScrollFloat";
 import ScrollIcon from "../../shared/components/ScrollIcon";
+import { faqs, features } from "@/lib/utils";
+import Footer from "@/shared/components/Footer";
 
-const features = [
-    {
-        title: "Real-time Messaging",
-        desc: "Instantly connect and chat with friends or groups. Enjoy lightning-fast message delivery and read receipts.",
-        icon: "💬",
-    },
-    {
-        title: "Media Sharing",
-        desc: "Share images, videos, and files seamlessly with your contacts. Drag and drop or upload in a snap!",
-        icon: "📎",
-    },
-    {
-        title: "Custom Themes",
-        desc: "Personalize your chat experience with beautiful themes and color schemes.",
-        icon: "🎨",
-    },
-    {
-        title: "Voice & Video Calls",
-        desc: "Connect face-to-face or with voice calls, directly from your chat window.",
-        icon: "📞",
-    },
-    {
-        title: "Group Chats",
-        desc: "Create groups for friends, family, or teams. Share updates, media, and more in one place.",
-        icon: "👥",
-    },
-    {
-        title: "Message Reactions",
-        desc: "React to messages with emojis to express yourself instantly.",
-        icon: "😃",
-    },
-    {
-        title: "End-to-End Encryption",
-        desc: "Your conversations are private and secure with industry-leading encryption.",
-        icon: "🔒",
-    },
-    {
-        title: "Smart Notifications",
-        desc: "Get notified only when it matters. Customize alerts for different chats.",
-        icon: "🔔",
-    },
-    {
-        title: "Pinned Messages",
-        desc: "Pin important messages for quick access anytime in your conversations.",
-        icon: "📌",
-    },
-];
 
-const faqs = [
-    {
-        q: "Is QuickChat free to use?",
-        a: "Yes, QuickChat is completely free for all users.",
-    },
-    {
-        q: "Can I use QuickChat on mobile?",
-        a: "Absolutely! QuickChat is fully responsive and works on any device.",
-    },
-    {
-        q: "How do I get started?",
-        a: "Just click the 'Get Started' button and sign up!",
-    },
-];
-
-const Home = () => {  const handleScroll = () => {
+const Home = () => {  
+    const handleScroll = () => {
     const featuresSection = document.querySelector('.features-section');
     if (featuresSection) {
       featuresSection.scrollIntoView({ behavior: 'smooth' });
@@ -129,7 +70,7 @@ const Home = () => {  const handleScroll = () => {
             colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
             animationSpeed={3}
             showBorder={false}
-            className="text-4xl md:text-7xl lg:text-8xl font-bold font-display tracking-tight drop-shadow-2xl"
+            className="text-4xl md:text-7xl lg:text-8xl font-display tracking-tight drop-shadow-2xl"
           >
             QUICKCHAT
           </GradientText>
@@ -271,7 +212,7 @@ const Home = () => {  const handleScroll = () => {
 
             <div className="bg-dark-card/30 backdrop-blur-sm rounded-3xl p-8 border border-gray-800/50 shadow-2xl">
               <Accordion className="gap-4">
-                {faqs.map((faq, idx) => (
+                {faqs?.map((faq, idx) => (
                   <AnimatedContent key={faq.q} direction="bottom">
                     <Accordion.Item
                       eventKey={String(idx)}
@@ -295,7 +236,13 @@ const Home = () => {  const handleScroll = () => {
                           fontWeight: "600",
                         }}
                       >
-                        <span className="mr-3" role="img" aria-label="Question">❓</span>
+                        <img
+                          className="mr-3 inline-block"
+                          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='currentColor' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20'%3E%3F%3C/text%3E%3C/svg%3E"
+                          alt="Question"
+                          aria-label="Question"
+                          style={{ width: "1.5em", height: "1.5em", verticalAlign: "middle" }}
+                        />
                         {faq.q}
                       </Accordion.Header>
                       <Accordion.Body
@@ -307,7 +254,13 @@ const Home = () => {  const handleScroll = () => {
                           lineHeight: "1.6",
                         }}
                       >
-                        <span className="mr-3" role="img" aria-label="Answer">💡</span>
+                        <img
+                          className="mr-3 inline-block"
+                          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='yellow' viewBox='0 0 24 24'%3E%3Ctext x='0' y='20'%3E%F0%9F%92%A1%3C/text%3E%3C/svg%3E"
+                          alt="Answer"
+                          aria-label="Answer"
+                          style={{ width: "1.5em", height: "1.5em", verticalAlign: "middle" }}
+                        />
                         {faq.a}
                       </Accordion.Body>
                     </Accordion.Item>
@@ -322,33 +275,8 @@ const Home = () => {  const handleScroll = () => {
           <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-gradient-to-tr from-cyan-500/10 to-blue-500/10 rounded-full blur-3xl"></div>
         </section>
 
-        {/* Footer */}
-        <footer className="relative border-t border-gray-800/50 pt-16 pb-8 text-center font-sans tracking-tight">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-          <div className="relative z-10">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
-                QuickChat
-              </h3>
-              <p className="text-gray-400 mb-6">Connect. Chat. Collaborate.</p>
-              <div className="flex justify-center gap-6 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-300">
-                  <span className="text-white text-xl">📱</span>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-300">
-                  <span className="text-white text-xl">💬</span>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-300">
-                  <span className="text-white text-xl">🚀</span>
-                </div>
-              </div>
-            </div>
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent mb-6"></div>
-            <span className="text-gray-500 text-sm">
-              © {new Date().getFullYear()} QuickChat. All rights reserved. Made with ❤️ and ☕
-            </span>
-          </div>
-        </footer>
+        {/* Footer Section */}
+        <Footer/>
       </div>
     </div>
   );

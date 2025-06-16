@@ -2,6 +2,7 @@
 
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
+import PropTypes from 'prop-types';
 import Footer from './Footer';
 
 const Layout = ({ children }) => {
@@ -23,6 +24,10 @@ const Layout = ({ children }) => {
       <Footer />
     </div>
   );
+};
+
+Layout.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default Layout;
