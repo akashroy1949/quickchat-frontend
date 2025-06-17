@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .qodo
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
