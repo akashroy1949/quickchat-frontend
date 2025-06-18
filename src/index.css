@@ -221,3 +221,173 @@ body {
 .slide-up-fade-in {
     animation: slideUpFadeIn 0.2s ease-out forwards;
 }
+
+/* Enhanced glassmorphism effects */
+.glass-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Particle animation */
+@keyframes particleFloat {
+
+    0%,
+    100% {
+        transform: translateY(0px) translateX(0px) rotate(0deg);
+        opacity: 0.3;
+    }
+
+    25% {
+        transform: translateY(-20px) translateX(10px) rotate(90deg);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: translateY(-40px) translateX(-5px) rotate(180deg);
+        opacity: 0.8;
+    }
+
+    75% {
+        transform: translateY(-20px) translateX(-15px) rotate(270deg);
+        opacity: 0.4;
+    }
+}
+
+.animate-particle {
+    animation: particleFloat 15s ease-in-out infinite;
+}
+
+/* Gradient text animation */
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.animate-gradient-text {
+    background: linear-gradient(-45deg, #ffffff, #a855f7, #06b6d4, #ffffff);
+    background-size: 400% 400%;
+    animation: gradientShift 3s ease infinite;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Pulse glow effect */
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(168, 85, 247, 0.6), 0 0 60px rgba(168, 85, 247, 0.3);
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Typing indicator animation */
+@keyframes typing {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+    }
+
+    30% {
+        transform: translateY(-10px);
+    }
+}
+
+.animate-typing {
+    animation: typing 1.4s ease-in-out infinite;
+}
+
+/* Scale on hover */
+.hover-scale {
+    transition: transform 0.3s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.05);
+}
+
+/* Smooth border radius animation */
+@keyframes morphBorder {
+
+    0%,
+    100% {
+        border-radius: 1rem;
+    }
+
+    25% {
+        border-radius: 2rem 1rem 2rem 1rem;
+    }
+
+    50% {
+        border-radius: 2rem;
+    }
+
+    75% {
+        border-radius: 1rem 2rem 1rem 2rem;
+    }
+}
+
+.animate-morph-border {
+    animation: morphBorder 8s ease-in-out infinite;
+}
+
+/* Optimized utility classes for login page */
+.login-glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl hover:bg-white/15 transition-all duration-500;
+}
+
+.login-input-base {
+    @apply w-full bg-white/5 backdrop-blur-sm border text-white placeholder-white/40 rounded-xl transition-all duration-300 ease-in-out focus:outline-none focus:ring-0;
+}
+
+.login-input-normal {
+    @apply border-white/20 hover:border-white/30 focus:border-purple-400/60 focus:bg-white/10 hover:bg-white/10;
+}
+
+.login-input-error {
+    @apply border-red-400/60 bg-red-500/10 focus:border-red-400 focus:bg-red-500/15 shake-animation;
+}
+
+.login-button-gradient {
+    @apply relative w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none border-0 shadow-lg hover:shadow-xl;
+}
+
+.social-button-base {
+    @apply flex items-center justify-center px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl hover:bg-white/10 hover:border-white/30 transition-all duration-300 hover:scale-105;
+}
+
+.feature-card-base {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all duration-300 hover:scale-105;
+}
+
+/* Performance optimizations */
+.will-change-transform {
+    will-change: transform;
+}
+
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}

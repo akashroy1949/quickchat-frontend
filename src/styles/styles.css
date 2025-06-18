@@ -63,3 +63,7 @@
     filter: blur(5px);
     pointer-events: none;
 }
+
+input.custom-input-field {
+    padding: 16px 35px !important;
+}
