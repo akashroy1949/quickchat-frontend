@@ -34,14 +34,28 @@ const INPUT_ICONS = {
         <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
+    ),
+    eyeOpen: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+    ),
+    eyeClosed: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 11-4.243-4.243m4.242 4.242L9.88 9.88" />
+        </svg>
     )
 };
 
 const CustomInput = React.memo(({ field, form: { touched, errors }, label, ...props }) => {
+    const [showPassword, setShowPassword] = React.useState(false);
+
     // Memoize computed values
     const hasError = touched[field.name] && errors[field.name];
     const hasValue = field.value;
     const isValid = touched[field.name] && !errors[field.name] && hasValue;
+    const isPasswordField = props.type === 'password';
 
     const boxShadow = useMemo(() => {
         if (hasError) {
@@ -69,8 +83,13 @@ const CustomInput = React.memo(({ field, form: { touched, errors }, label, ...pr
                 <Input
                     {...field}
                     {...props}
+                    type={isPasswordField && showPassword ? 'text' : props.type}
                     className={inputClassName}
-                    style={{ boxShadow, paddingLeft: '2.5rem' }}
+                    style={{
+                        boxShadow,
+                        paddingLeft: '2.5rem',
+                        paddingRight: isPasswordField ? '5rem' : '2.5rem'
+                    }}
                 />
 
                 {/* Input Icon */}
@@ -78,14 +97,37 @@ const CustomInput = React.memo(({ field, form: { touched, errors }, label, ...pr
                     {INPUT_ICONS[props.type] || INPUT_ICONS.email}
                 </div>
 
+                {/* Password Toggle Button */}
+                {isPasswordField && (
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-12 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors duration-200 p-1 rounded-md hover:bg-white/5"
+                    >
+                        {showPassword ? INPUT_ICONS.eyeClosed : INPUT_ICONS.eyeOpen}
+                    </button>
+                )}
+
                 {/* Status Icons */}
-                {hasError && (
+                {hasError && !isPasswordField && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400">
                         {INPUT_ICONS.error}
                     </div>
                 )}
 
-                {isValid && (
+                {hasError && isPasswordField && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400">
+                        {INPUT_ICONS.error}
+                    </div>
+                )}
+
+                {isValid && !isPasswordField && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
+                        {INPUT_ICONS.success}
+                    </div>
+                )}
+
+                {isValid && isPasswordField && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
                         {INPUT_ICONS.success}
                     </div>
