@@ -83,7 +83,7 @@ const FeatureCard = React.memo(({ icon, label, gradientFrom, gradientTo }) => (
         <div className={`w-8 h-8 bg-gradient-to-r ${gradientFrom} ${gradientTo} rounded-lg mx-auto mb-2 flex items-center justify-center`}>
             {icon}
         </div>
-        <p className="text-white/70 text-xs m-0">{label}</p>
+        <p className="m-0 text-white/70 text-xs">{label}</p>
     </div>
 ));
 
