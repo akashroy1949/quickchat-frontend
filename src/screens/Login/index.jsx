@@ -79,11 +79,11 @@ const ChatBubblesDecoration = React.memo(() => (
 
 // Feature card component
 const FeatureCard = React.memo(({ icon, label, gradientFrom, gradientTo }) => (
-    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all duration-300 hover:scale-105">
+    <div className="flex flex-col items-center justify-center bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all duration-300 hover:scale-105">
         <div className={`w-8 h-8 bg-gradient-to-r ${gradientFrom} ${gradientTo} rounded-lg mx-auto mb-2 flex items-center justify-center`}>
             {icon}
         </div>
-        <p className="text-white/70 text-xs">{label}</p>
+        <p className="text-white/70 text-xs m-0">{label}</p>
     </div>
 ));
 
@@ -198,7 +198,7 @@ const LoginScreen = () => {
     ], [mousePosition.x, mousePosition.y]);
 
     // Memoize particles to prevent regeneration on every render
-    const particles = useMemo(() => 
+    const particles = useMemo(() =>
         Array.from({ length: 20 }, (_, i) => ({
             id: `particle-${i}`,
             style: {
@@ -208,7 +208,7 @@ const LoginScreen = () => {
                 animationDuration: `${15 + Math.random() * 10}s`
             }
         }))
-    , []);
+        , []);
 
     return (
         <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -242,7 +242,7 @@ const LoginScreen = () => {
                     <div className="group relative">
                         {/* Glow Effect */}
                         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-600 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-                        
+
                         {/* Main Card */}
                         <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-8 hover:bg-white/15 transition-all duration-500">
                             {/* Header */}
@@ -266,16 +266,17 @@ const LoginScreen = () => {
                             {/* Sign Up Link */}
                             <div className="mt-8 text-center">
                                 <div className="relative">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <div className="w-full border-t border-white/10"></div>
-                                    </div>
-                                    <div className="relative flex justify-center text-sm">
-                                        <span className="px-4 bg-transparent text-white/50">New to QuickChat?</span>
+                                    <div className="absolute inset-0 flex items-center justify-center flex-auto">
+                                        <div className="w-[70%] border-t border-white/10" />
+                                        <div className="relative w-full flex justify-center text-sm">
+                                            <span className="bg-transparent text-white/50">New to QuickChat?</span>
+                                        </div>
+                                        <div className="w-[70%] border-t border-white/10" />
                                     </div>
                                 </div>
-                                <Link 
-                                    to="/register" 
-                                    className="mt-4 inline-flex items-center justify-center w-full px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-white/20 rounded-xl hover:from-purple-600/30 hover:to-pink-600/30 hover:border-white/30 transition-all duration-300 hover:scale-105 hover:shadow-lg backdrop-blur-sm group"
+                                <Link
+                                    to="/register"
+                                    className="mt-4 decoration-transparent inline-flex items-center justify-center w-full px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-white/20 rounded-xl hover:from-purple-600/30 hover:to-pink-600/30 hover:border-white/30 transition-all duration-300 hover:scale-105 hover:shadow-lg backdrop-blur-sm group"
                                 >
                                     <span>Create an account</span>
                                     <svg className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
