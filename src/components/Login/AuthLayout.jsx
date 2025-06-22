@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import FormTransition from "./FormTransition";
+// eslint-disable-next-line no-unused-vars
+import { motion } from "framer-motion";
 
 // Memoized components for better performance
 const GradientOrb = React.memo(({ className, style, children }) => (
