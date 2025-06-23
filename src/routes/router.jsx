@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import LoginScreen from "../screens/Login";
 import RegisterScreen from "../screens/Register";
 import Home from "../screens/Home";
+import ChatScreen from "../screens/Chat";
 
 
 const AppRouter = () => {
@@ -11,6 +12,7 @@ const AppRouter = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginScreen />} />
             <Route path="/register" element={<RegisterScreen />} />
+            <Route path="/chat" element={<ChatScreen />} />
 
             {/* Add private routes later */}
         </Routes>

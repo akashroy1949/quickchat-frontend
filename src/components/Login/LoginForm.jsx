@@ -7,6 +7,7 @@ import { loginUserAction } from "@/redux/actions/Login/loginUserAction";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import PropTypes from "prop-types";
+import { useNavigate } from "react-router-dom";
 
 // Memoized icons to prevent recreation
 const INPUT_ICONS = {
@@ -221,6 +222,7 @@ const ArrowIcon = React.memo(() => (
 
 const LoginForm = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const loginData = useSelector((state) => state.loginUser);
     const loginLoading = loginData?.loading;
 
@@ -232,7 +234,7 @@ const LoginForm = () => {
                     (data) => {
                         toast.success("Login successful");
                         data?.data && console.log("User Data:", data.data);
-                        // You can redirect here e.g. navigate("/chat")
+                        navigate("/chat"); // Redirect to chat after login
                     },
                     (err) => {
                         toast.error(err);
@@ -244,7 +246,7 @@ const LoginForm = () => {
         } finally {
             setSubmitting(false);
         }
-    }, [dispatch]);
+    }, [dispatch, navigate]);
 
     const handleSocialLogin = useCallback((provider) => {
         console.log(`Login with ${provider}`);
