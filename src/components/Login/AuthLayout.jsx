@@ -172,6 +172,7 @@ const AuthLayout = ({ children, title, subtitle, icon, bottomContent }) => {
     // Memoize gradient orbs to prevent unnecessary re-renders
     const gradientOrbs = useMemo(() => [
         {
+            id: 'purple-pink-orb',
             className: "absolute w-96 h-96 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full blur-3xl animate-float",
             style: {
                 top: '10%',
@@ -180,6 +181,7 @@ const AuthLayout = ({ children, title, subtitle, icon, bottomContent }) => {
             }
         },
         {
+            id: 'cyan-blue-orb',
             className: "absolute w-80 h-80 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl animate-float-reverse",
             style: {
                 top: '60%',
@@ -188,6 +190,7 @@ const AuthLayout = ({ children, title, subtitle, icon, bottomContent }) => {
             }
         },
         {
+            id: 'emerald-teal-orb',
             className: "absolute w-64 h-64 bg-gradient-to-r from-emerald-500/25 to-teal-500/25 rounded-full blur-3xl animate-float",
             style: {
                 top: '30%',
@@ -216,9 +219,9 @@ const AuthLayout = ({ children, title, subtitle, icon, bottomContent }) => {
             {/* Animated Background */}
             <div className="absolute inset-0">
                 {/* Gradient Orbs */}
-                {gradientOrbs.map((orb, index) => (
+                {gradientOrbs.map((orb) => (
                     <GradientOrb
-                        key={`orb-${index}`}
+                        key={orb.id}
                         className={orb.className}
                         style={orb.style}
                     />
