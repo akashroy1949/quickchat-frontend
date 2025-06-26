@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { FaPaperPlane, FaPaperclip } from "react-icons/fa";
 import API from "@/services/api";
-import { connectSocket } from "@/services/socket";
+import { connectSocket, sendMessageWithStatus, sendTyping, sendStopTyping } from "@/services/socket";
 
-const MessageInput = ({ conversationId, onMessageSent }) => {
+const MessageInput = ({ conversationId, onMessageSent, conversation }) => {
     const fileInputRef = useRef();
     const [content, setContent] = useState("");
     const [file, setFile] = useState(null);
@@ -34,6 +34,20 @@ const MessageInput = ({ conversationId, onMessageSent }) => {
         return userId;
     };
 
+    // Helper function to get receiver ID from conversation (for 1-to-1 chats)
+    const getReceiverId = () => {
+        if (!conversation || !conversation.participants) return null;
+
+        const currentUserId = getUserId();
+        // Find the participant who is not the current user
+        const receiver = conversation.participants.find(participant => {
+            const participantId = participant._id || participant;
+            return participantId !== currentUserId;
+        });
+
+        return receiver ? (receiver._id || receiver) : null;
+    };
+
     // Handle typing indicators
     const handleTyping = () => {
         if (!conversationId) return;
@@ -41,16 +55,17 @@ const MessageInput = ({ conversationId, onMessageSent }) => {
         const token = localStorage.getItem("token");
         const userId = getUserId();
 
-        if (!userId) return;
+        if (!userId) {
+            console.warn("🔤 Cannot send typing event: missing userId");
+            return;
+        }
 
-        const socket = connectSocket(token, userId);
+        // Connect socket if needed
+        connectSocket(token, userId);
 
         if (!isTyping) {
             setIsTyping(true);
-            socket.emit("typing", {
-                sender: userId,
-                conversationId
-            });
+            sendTyping(userId, conversationId);
         }
 
         // Clear existing timeout
@@ -61,10 +76,7 @@ const MessageInput = ({ conversationId, onMessageSent }) => {
         // Set new timeout to stop typing after 3 seconds of inactivity
         typingTimeoutRef.current = setTimeout(() => {
             setIsTyping(false);
-            socket.emit("stopTyping", {
-                sender: userId,
-                conversationId
-            });
+            sendStopTyping(userId, conversationId);
         }, 3000);
     };
 
@@ -74,13 +86,8 @@ const MessageInput = ({ conversationId, onMessageSent }) => {
 
         // Stop typing when sending message
         if (isTyping) {
-            const token = localStorage.getItem("token");
             const userId = getUserId();
-            const socket = connectSocket(token, userId);
-            socket.emit("stopTyping", {
-                sender: userId,
-                conversationId
-            });
+            sendStopTyping(userId, conversationId);
             setIsTyping(false);
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
@@ -97,7 +104,9 @@ const MessageInput = ({ conversationId, onMessageSent }) => {
             const userId = getUserId();
             const socket = connectSocket(token, userId);
             const messageObj = res?.data?.data;
-            socket.emit("sendMessage", {
+
+            // Use the enhanced send function with proper status tracking
+            sendMessageWithStatus({
                 _id: messageObj?._id,
                 sender: messageObj?.sender || { _id: userId },
                 conversationId,
@@ -105,6 +114,8 @@ const MessageInput = ({ conversationId, onMessageSent }) => {
                 file: messageObj?.file || null,
                 image: messageObj?.image || null,
                 createdAt: messageObj?.createdAt || new Date().toISOString(),
+                delivered: false,  // Initially not delivered
+                seen: false       // Initially not seen
             });
             if (onMessageSent) onMessageSent(messageObj);
             setContent("");

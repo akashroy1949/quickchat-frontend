@@ -19,14 +19,14 @@ export function connectSocket(token, userId) {
 
         // Handle connection events
         socket.on("connect", () => {
-            console.log("Socket connected successfully");
+
             if (userId) {
                 socket.emit("userConnected", userId);
             }
         });
 
         socket.on("disconnect", (reason) => {
-            console.log("Socket disconnected:", reason);
+
         });
 
         socket.on("connect_error", (error) => {
@@ -48,33 +48,79 @@ export function disconnectSocket() {
 }
 
 // Utility functions for common socket operations
+
 export function joinConversation(conversationId) {
     if (socket && conversationId) {
         socket.emit("joinConversation", conversationId);
+
     }
 }
 
 export function leaveConversation(conversationId) {
     if (socket && conversationId) {
         socket.emit("leaveConversation", conversationId);
+
     }
 }
 
-export function sendTyping(conversationId, userId) {
-    if (socket && conversationId && userId) {
-        socket.emit("typing", { sender: userId, conversationId });
+export function sendTyping(senderId, conversationId) {
+    if (socket && senderId && conversationId) {
+
+        socket.emit("typing", { sender: senderId, conversationId });
     }
 }
 
-export function sendStopTyping(conversationId, userId) {
-    if (socket && conversationId && userId) {
-        socket.emit("stopTyping", { sender: userId, conversationId });
+export function sendStopTyping(senderId, conversationId) {
+    if (socket && senderId && conversationId) {
+
+        socket.emit("stopTyping", { sender: senderId, conversationId });
+    }
+}
+
+// Legacy functions for direct messages (backward compatibility)
+export function sendDirectTyping(senderId, receiverId) {
+    if (socket && senderId && receiverId) {
+        socket.emit("directTyping", { sender: senderId, receiver: receiverId });
+    }
+}
+
+export function sendDirectStopTyping(senderId, receiverId) {
+    if (socket && senderId && receiverId) {
+        socket.emit("directStopTyping", { sender: senderId, receiver: receiverId });
     }
 }
 
 export function markMessagesSeen(conversationId, userId, messageIds) {
     if (socket && conversationId && userId && messageIds?.length > 0) {
-        socket.emit("messageSeen", { conversationId, userId, messageIds });
+
+        socket.emit("messageSeen", {
+            conversationId,
+            seenByUserId: userId, // Clearer naming
+            messageIds
+        });
+    }
+}
+
+export function markMessagesDelivered(conversationId, messageIds, deliveredToUserId) {
+    if (socket && conversationId && messageIds?.length > 0) {
+        const userId = localStorage.getItem("userId");
+
+        socket.emit("messageDelivered", {
+            conversationId,
+            messageIds,
+            deliveredToUserId: deliveredToUserId || userId
+        });
+    }
+}
+
+// Enhanced function to send message with proper status tracking
+export function sendMessageWithStatus(messageData) {
+    if (socket && messageData) {
+
+        socket.emit("sendMessage", {
+            ...messageData,
+            timestamp: new Date().toISOString()
+        });
     }
 }
 

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FaEnvelope, FaExclamationTriangle } from "react-icons/fa";
 import API from "@/services/api";
 
-const ProfileModal = ({ user, onClose }) => {
+const ProfileModal = ({ user, onClose, onSendMessage }) => {
     const [reporting, setReporting] = useState(false);
     const [reason, setReason] = useState("");
     const [description, setDescription] = useState("");
@@ -22,6 +22,12 @@ const ProfileModal = ({ user, onClose }) => {
         }
     };
 
+    const handleSendMessage = async () => {
+        if (onSendMessage) {
+            await onSendMessage(user);
+        }
+    };
+
     if (!user) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -37,7 +43,10 @@ const ProfileModal = ({ user, onClose }) => {
                     <div className="text-lg font-bold mb-1">{user.name}</div>
                     <div className="text-gray-500 mb-4">{user.email}</div>
                     <div className="flex space-x-4 mt-4">
-                        <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        <button
+                            className="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            onClick={handleSendMessage}
+                        >
                             <FaEnvelope className="mr-2" /> Send Message
                         </button>
                         <button className="flex items-center px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" onClick={() => setReporting(true)}>

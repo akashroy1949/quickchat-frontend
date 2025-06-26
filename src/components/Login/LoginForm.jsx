@@ -233,7 +233,7 @@ const LoginForm = () => {
                     values,
                     (data) => {
                         toast.success("Login successful");
-                        data?.data && console.log("User Data:", data.data);
+
                         navigate("/chat"); // Redirect to chat after login
                     },
                     (err) => {
@@ -249,7 +249,7 @@ const LoginForm = () => {
     }, [dispatch, navigate]);
 
     const handleSocialLogin = useCallback((provider) => {
-        console.log(`Login with ${provider}`);
+
         // Implement social login logic here
     }, []);
 
