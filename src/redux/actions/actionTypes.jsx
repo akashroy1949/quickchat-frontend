@@ -7,5 +7,7 @@ export const SET_REGISTER_USER_REQUEST = "SET_REGISTER_USER_REQUEST";
 export const SET_REGISTER_USER_SUCCESS = "SET_REGISTER_USER_SUCCESS";
 export const SET_REGISTER_USER_FAILURE = "SET_REGISTER_USER_FAILURE";
 
+export const LOGOUT = "LOGOUT";
+
 // Add more action types below as needed
 // e.g., SET_FORGOT_PASSWORD_REQUEST, etc.

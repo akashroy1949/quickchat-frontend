@@ -1,5 +1,5 @@
 /*
-	Installed from https://reactbits.dev/default/
+  Installed from https://reactbits.dev/default/
 */
 
 import { useEffect, useRef } from "react";
@@ -17,8 +17,8 @@ import "./Hyperspeed.css";
 
 const Hyperspeed = ({
   effectOptions = {
-    onSpeedUp: () => {},
-    onSlowDown: () => {},
+    onSpeedUp: () => { },
+    onSlowDown: () => { },
     distortion: "turbulentDistortion",
     length: 400,
     roadWidth: 10,
@@ -109,11 +109,11 @@ const Hyperspeed = ({
           let uAmp = mountainUniforms.uAmp.value;
           let distortion = new THREE.Vector3(
             Math.cos(progress * Math.PI * uFreq.x + time) * uAmp.x -
-              Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
+            Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
             nsin(progress * Math.PI * uFreq.y + time) * uAmp.y -
-              nsin(movementProgressFix * Math.PI * uFreq.y + time) * uAmp.y,
+            nsin(movementProgressFix * Math.PI * uFreq.y + time) * uAmp.y,
             nsin(progress * Math.PI * uFreq.z + time) * uAmp.z -
-              nsin(movementProgressFix * Math.PI * uFreq.z + time) * uAmp.z,
+            nsin(movementProgressFix * Math.PI * uFreq.z + time) * uAmp.z,
           );
           let lookAtAmp = new THREE.Vector3(2, 2, 2);
           let lookAtOffset = new THREE.Vector3(0, 0, -5);
@@ -141,13 +141,13 @@ const Hyperspeed = ({
           let uAmp = xyUniforms.uAmp.value;
           let distortion = new THREE.Vector3(
             Math.cos(progress * Math.PI * uFreq.x + time) * uAmp.x -
-              Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
+            Math.cos(movementProgressFix * Math.PI * uFreq.x + time) * uAmp.x,
             Math.sin(progress * Math.PI * uFreq.y + time + Math.PI / 2) *
-              uAmp.y -
-              Math.sin(
-                movementProgressFix * Math.PI * uFreq.y + time + Math.PI / 2,
-              ) *
-                uAmp.y,
+            uAmp.y -
+            Math.sin(
+              movementProgressFix * Math.PI * uFreq.y + time + Math.PI / 2,
+            ) *
+            uAmp.y,
             0,
           );
           let lookAtAmp = new THREE.Vector3(2, 0.4, 1);
@@ -176,9 +176,9 @@ const Hyperspeed = ({
           let uAmp = LongRaceUniforms.uAmp.value;
           let distortion = new THREE.Vector3(
             Math.sin(progress * Math.PI * uFreq.x + time) * uAmp.x -
-              Math.sin(camProgress * Math.PI * uFreq.x + time) * uAmp.x,
+            Math.sin(camProgress * Math.PI * uFreq.x + time) * uAmp.x,
             Math.sin(progress * Math.PI * uFreq.y + time) * uAmp.y -
-              Math.sin(camProgress * Math.PI * uFreq.y + time) * uAmp.y,
+            Math.sin(camProgress * Math.PI * uFreq.y + time) * uAmp.y,
             0,
           );
           let lookAtAmp = new THREE.Vector3(1, 1, 0);
@@ -225,7 +225,7 @@ const Hyperspeed = ({
               Math.cos(Math.PI * p * uFreq.y + time * (uFreq.y / uFreq.x)),
               2,
             ) *
-              uAmp.y;
+            uAmp.y;
 
           const getY = (p) =>
             -nsin(Math.PI * p * uFreq.z + time) * uAmp.z -
@@ -233,7 +233,7 @@ const Hyperspeed = ({
               nsin(Math.PI * p * uFreq.w + time / (uFreq.z / uFreq.w)),
               5,
             ) *
-              uAmp.w;
+            uAmp.w;
 
           let distortion = new THREE.Vector3(
             getX(progress) - getX(progress + 0.007),
@@ -575,7 +575,7 @@ const Hyperspeed = ({
         }
 
         if (this.options.isHyper) {
-          console.log(this.options.isHyper);
+          // Hyper mode is active
         }
       }
 
