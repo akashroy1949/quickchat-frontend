@@ -322,14 +322,20 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
             }
         });
 
-        // Handle typing indicators (backend sends sender only for 1-to-1 chats)
+        // Handle typing indicators
         const handleTyping = (data) => {
-
+            console.log("👨‍💻 Typing event received:", data);
             const currentUserId = getUserId();
 
-            // For 1-to-1 chats, we only care if the sender is not the current user
-            if (data.sender && data.sender !== currentUserId) {
+            // Only process typing events for the current conversation
+            if (data.conversationId !== conversationId) {
+                console.log("🚫 Ignoring typing event for different conversation");
+                return;
+            }
 
+            // Only show typing indicator if sender is not the current user
+            if (data.sender && data.sender !== currentUserId) {
+                console.log("👨‍💻 Adding user to typing list:", data.sender);
                 setTypingUsers(prev => {
                     if (!prev.includes(data.sender)) {
                         return [...prev, data.sender];
@@ -340,11 +346,17 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
         };
 
         const handleStopTyping = (data) => {
+            console.log("✋ Stop typing event received:", data);
+            
+            // Only process stop typing events for the current conversation
+            if (data.conversationId !== conversationId) {
+                console.log("🚫 Ignoring stop typing event for different conversation");
+                return;
+            }
 
-
-            // Remove the user from typing regardless of conversation (for 1-to-1 chats)
+            // Remove the user from typing list
             if (data.sender) {
-
+                console.log("✋ Removing user from typing list:", data.sender);
                 setTypingUsers(prev => prev.filter(userId => userId !== data.sender));
             }
         };
@@ -430,25 +442,60 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
     }, [messages, conversationId, getUserId]);
 
     return (
-        <div className="p-4">
+        <div className="p-4 h-full">
             {messages.length === 0 ? (
                 <div className="flex justify-center items-center h-full">
-                    <div className="bg-gray-800/50 p-4 rounded-lg text-gray-400 text-center">
-                        <div className="text-2xl mb-2">💬</div>
-                        <div>No messages yet.</div>
-                        <div className="text-sm mt-1">Start a conversation!</div>
+                    <div className="bg-gray-800/30 p-6 rounded-lg text-gray-300 text-center max-w-md">
+                        <div className="text-4xl mb-4">💬</div>
+                        <div className="text-xl font-medium mb-2">No messages yet</div>
+                        <div className="text-sm text-gray-400">
+                            Start the conversation by sending a message below!
+                        </div>
                     </div>
                 </div>
             ) : (
-                messages.map((msg, index) => (
-                    <Message
-                        key={`${msg._id}-${forceUpdateCounter}`}
-                        message={msg}
-                        currentUserId={currentUserId}
-                        conversationId={conversationId}
-                        isLastMessage={index === messages.length - 1}
-                    />
-                ))
+                <div className="space-y-1">
+                    {messages.map((msg, index) => {
+                        // Group messages by date
+                        const msgDate = new Date(msg.createdAt || msg.timestamp).toLocaleDateString();
+                        const prevMsg = index > 0 ? messages[index - 1] : null;
+                        const prevMsgDate = prevMsg ? new Date(prevMsg.createdAt || prevMsg.timestamp).toLocaleDateString() : null;
+
+                        // Show date separator if this is the first message or if the date changed
+                        const showDateSeparator = !prevMsg || msgDate !== prevMsgDate;
+
+                        // Check if consecutive messages are from the same sender
+                        const isSameSenderAsPrev = prevMsg &&
+                            prevMsg.sender?._id === msg.sender?._id &&
+                            msgDate === prevMsgDate &&
+                            // Messages within 2 minutes are grouped
+                            (new Date(msg.createdAt || msg.timestamp) - new Date(prevMsg.createdAt || prevMsg.timestamp)) < 120000;
+
+                        return (
+                            <React.Fragment key={`${msg._id}-${forceUpdateCounter}`}>
+                                {showDateSeparator && (
+                                    <div className="flex justify-center my-4">
+                                        <div className="bg-gray-700 text-gray-300 text-xs px-3 py-1 rounded-full">
+                                            {new Date(msg.createdAt || msg.timestamp).toLocaleDateString(undefined, {
+                                                weekday: 'long',
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                <Message
+                                    message={msg}
+                                    currentUserId={currentUserId}
+                                    conversationId={conversationId}
+                                    isLastMessage={index === messages.length - 1}
+                                    isContinuation={isSameSenderAsPrev}
+                                />
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
             )}
 
             {/* Typing indicators */}

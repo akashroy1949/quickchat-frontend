@@ -129,3 +129,10 @@ export function sendMessage(messageData) {
         socket.emit("sendMessage", messageData);
     }
 }
+
+// Function to request a refresh of conversations
+export function requestConversationsRefresh() {
+    if (socket) {
+        socket.emit("requestConversationsRefresh");
+    }
+}

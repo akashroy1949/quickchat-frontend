@@ -1,9 +1,8 @@
 import axios from "axios";
+import { getApiUrl } from "@/utils/apiUrl";
 
-const DEV_BASE_URL = "http://localhost:5000/api";
-const PROD_BASE_URL = "https://quickchat.dpdns.org/api";
-
-const BASE_URL = window.location.hostname === "localhost" ? DEV_BASE_URL : PROD_BASE_URL;
+// Use the utility function to get the API base URL
+const BASE_URL = getApiUrl("");
 
 const apiInstance = axios.create({
     baseURL: BASE_URL,

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaSearch } from "react-icons/fa";
-import { useSelector } from "react-redux";
+import { FaSearch, FaEllipsisV, FaUserCircle, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { BsChatLeftTextFill, BsThreeDotsVertical } from "react-icons/bs";
+import { useSelector, useDispatch } from "react-redux";
 import API from "@/services/api";
-import { connectSocket, joinConversation } from "@/services/socket";
+import { connectSocket, joinConversation, disconnectSocket } from "@/services/socket";
 import PropTypes from "prop-types";
+import { performLogout } from "@/redux/actions/Login/logoutAction";
 
 const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedConversation, onMessageSent }, ref) => {
     const [searchOpen, setSearchOpen] = useState(false);
@@ -11,6 +13,8 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
     const [results, setResults] = useState([]);
     const [conversations, setConversations] = useState([]);
     const [unreadMap, setUnreadMap] = useState({}); // { [conversationId]: { count, lastMessage } }
+    const [collapsed, setCollapsed] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
     // Use ref to track selected conversation for socket handlers
     const selectedConversationRef = useRef(selectedConversation);
@@ -40,6 +44,10 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
             conversationId: msg.conversationId,
             sender: msg.sender?.name || msg.sender
         });
+
+        // Get current user ID to check if message is from current user
+        const currentUserId = getUserId();
+        const isFromCurrentUser = msg.sender?._id === currentUserId || msg.sender === currentUserId;
 
         setConversations(prev => {
             console.log(`🔍 Current conversations count: ${prev.length}`);
@@ -71,6 +79,12 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
                         const conversations = res.data.conversations || [];
                         console.log(`✅ Fetched ${conversations.length} conversations after missing conversation`);
                         setConversations(conversations);
+
+                        // Join the conversation room for real-time updates
+                        if (msg.conversationId) {
+                            joinConversation(msg.conversationId);
+                            console.log(`🔗 Joined conversation room: ${msg.conversationId}`);
+                        }
                     })
                     .catch((error) => {
                         console.error("❌ Error fetching conversations:", error);
@@ -80,8 +94,12 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
         });
 
         // Update unread map unless this conversation is currently selected
+        // or the message is from the current user
         setUnreadMap(prev => {
-            if (selectedConversation && selectedConversation._id === msg.conversationId) {
+            // Don't increment unread count if:
+            // 1. This conversation is currently selected
+            // 2. The message is from the current user
+            if ((selectedConversation && selectedConversation._id === msg.conversationId) || isFromCurrentUser) {
                 return prev;
             }
 
@@ -94,23 +112,83 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
                 }
             };
         });
+
+        // If this is a new message and not from current user, play notification sound
+        // This is a common WhatsApp feature
+        if (!isFromCurrentUser && msg.conversationId) {
+            try {
+                // Create a simple notification sound using the Web Audio API
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 800;
+                gainNode.gain.value = 0.1;
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.start();
+
+                // Short notification sound
+                setTimeout(() => {
+                    oscillator.stop();
+                }, 200);
+            } catch (error) {
+                console.log('Could not play notification sound');
+            }
+        }
     }
 
     // Helper function to update conversations when a conversation is updated
     function handleConversationUpdated(data, setConversations) {
+        console.log("🔄 handleConversationUpdated called with:", data);
+
+        if (!data || !data.conversationId) {
+            console.error("Invalid conversation update data:", data);
+            return;
+        }
+
         setConversations(prev => {
-            return prev
-                .map(conv => {
-                    if (conv._id === data.conversationId) {
-                        return {
-                            ...conv,
-                            lastMessage: data.lastMessage,
-                            lastActivity: data.lastActivity
-                        };
-                    }
-                    return conv;
-                })
-                .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+            // Check if the conversation exists in the current list
+            const existingConv = prev.find(conv => conv._id === data.conversationId);
+
+            if (existingConv) {
+                console.log("✅ Updating existing conversation in sidebar");
+                // Update existing conversation
+                return prev
+                    .map(conv => {
+                        if (conv._id === data.conversationId) {
+                            return {
+                                ...conv,
+                                lastMessage: data.lastMessage || conv.lastMessage,
+                                lastActivity: data.lastActivity || new Date().toISOString()
+                            };
+                        }
+                        return conv;
+                    })
+                    .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+            } else {
+                console.log("⚠️ Conversation not found in sidebar, fetching all conversations");
+                // If conversation doesn't exist, fetch updated conversations
+                API.getConversations()
+                    .then((res) => {
+                        const conversations = res.data.conversations || [];
+                        console.log(`✅ Fetched ${conversations.length} conversations after update event`);
+                        setConversations(conversations);
+
+                        // Join the conversation room for real-time updates
+                        if (data.conversationId) {
+                            joinConversation(data.conversationId);
+                            console.log(`🔗 Joined conversation room: ${data.conversationId}`);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("❌ Error fetching conversations:", error);
+                    });
+                return prev;
+            }
         });
     }
 
@@ -126,10 +204,17 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
 
     // Helper function to handle when user sends a message (move conversation to top)
     function handleUserMessageSent(messageData, setConversations) {
-        if (!messageData || !messageData.conversationId) return;
+        if (!messageData) return;
+
+        // Extract conversationId - it could be in different properties depending on the API response
+        const conversationId = messageData.conversationId || messageData.conversation;
+
+        if (!conversationId) {
+            console.warn("Missing conversationId in message data:", messageData);
+            return;
+        }
 
         setConversations(prev => {
-            const conversationId = messageData.conversationId;
             const existingConvIndex = prev.findIndex(conv => conv._id === conversationId);
 
             if (existingConvIndex !== -1) {
@@ -142,17 +227,48 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
                     ...conversationToMove,
                     lastMessage: {
                         _id: messageData._id,
-                        content: messageData.content,
+                        content: messageData.content || "",
                         sender: messageData.sender,
                         createdAt: messageData.createdAt || new Date().toISOString(),
-                        image: messageData.image,
-                        file: messageData.file
+                        image: messageData.image || null,
+                        file: messageData.file || null,
+                        fileName: messageData.fileName || null,
+                        fileSize: messageData.fileSize || null,
+                        fileType: messageData.fileType || null,
+                        // Initialize with sent status - will be updated when delivered/seen
+                        delivered: false,
+                        seen: false
                     },
                     lastActivity: new Date().toISOString()
                 };
 
+                // Log the updated conversation for debugging
+                console.log("Updated conversation in sidebar:", {
+                    id: updatedConversation._id,
+                    lastMessage: {
+                        content: updatedConversation.lastMessage.content,
+                        image: updatedConversation.lastMessage.image ? "Yes" : "No",
+                        file: updatedConversation.lastMessage.file ? "Yes" : "No",
+                        fileName: updatedConversation.lastMessage.fileName
+                    }
+                });
+
                 // Place at the beginning of the array
                 return [updatedConversation, ...updatedConversations];
+            } else {
+                // If conversation doesn't exist in the list yet (rare case),
+                // fetch all conversations to ensure we have the latest data
+                console.log("Conversation not found in sidebar, fetching all conversations");
+                setTimeout(() => {
+                    API.getConversations()
+                        .then((res) => {
+                            const conversations = res.data.conversations || [];
+                            setConversations(conversations);
+                        })
+                        .catch((error) => {
+                            console.error("Error fetching conversations after message sent:", error);
+                        });
+                }, 500);
             }
 
             return prev;
@@ -190,7 +306,7 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
             .catch(() => setConversations([]));
     }, [getUserId]);
 
-    // Separate useEffect for socket setup to avoid re-creating listeners
+    // SIMPLIFIED APPROACH: Single useEffect for all socket and refresh logic
     useEffect(() => {
         const token = localStorage.getItem("token");
         const userId = getUserId();
@@ -200,113 +316,89 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
             return;
         }
 
-        const socket = connectSocket(token, userId);
-        console.log(`🔌 Sidebar setting up socket listeners for user: ${userId}`);
+        console.log("🔄 Setting up global message listener and refresh mechanism");
 
-        // Create handlers that capture current state
-        const messageReceivedHandler = (msg) => {
-            console.log("📨 Sidebar received messageReceived event:", msg);
-            console.log("🔄 Processing message for conversation:", msg.conversationId);
-            console.log("👤 Current selected conversation:", selectedConversationRef.current?._id);
-            handleMessageReceived(msg, setConversations, setUnreadMap, selectedConversationRef.current, API, getUserId);
-        };
-
-        const conversationUpdatedHandler = (data) => {
-            console.log("🔄 Sidebar received conversationUpdated event:", data);
-            handleConversationUpdated(data, setConversations);
-        };
-
-        const newConversationVisibleHandler = (data) => {
-            console.log("🆕 Sidebar received newConversationVisible event:", data);
-            console.log("🔄 Refreshing conversations list...");
-
-            // Fetch updated conversations to include the newly visible one
+        // Function to refresh conversations - we'll use this everywhere
+        const refreshConversations = () => {
+            console.log("🔄 Refreshing conversations list");
             API.getConversations()
                 .then((res) => {
                     const conversations = res.data.conversations || [];
-                    console.log(`✅ Fetched ${conversations.length} conversations after newConversationVisible event`);
+                    console.log(`✅ Fetched ${conversations.length} conversations`);
                     setConversations(conversations);
 
-                    // Join the new conversation room
-                    if (data.conversationId) {
-                        joinConversation(data.conversationId);
-                        console.log(`🔗 Joined conversation room: ${data.conversationId}`);
-                    }
+                    // Join all conversation rooms
+                    conversations.forEach(conv => {
+                        joinConversation(conv._id);
+                    });
                 })
                 .catch((error) => {
-                    console.error("❌ Error fetching conversations after newConversationVisible:", error);
+                    console.error("❌ Error fetching conversations:", error);
                 });
         };
 
-        const conversationBecameVisibleHandler = (data) => {
-            console.log("📡 Sidebar received conversationBecameVisible broadcast:", data);
-            const currentUserId = getUserId();
+        // Connect to socket
+        const socket = connectSocket(token, userId);
 
-            // Check if this user is in the newly visible users list
-            if (data.newlyVisibleUsers && data.newlyVisibleUsers.includes(currentUserId)) {
-                console.log("🎯 This user is newly visible for conversation:", data.conversationId);
-                console.log("🔄 Refreshing conversations list due to broadcast...");
+        // GLOBAL MESSAGE LISTENER - This is the key to our solution
+        // We'll refresh the entire sidebar whenever ANY socket event happens
+        socket.onAny((event) => {
+            console.log(`🔔 Socket event received: ${event}`);
 
-                // Fetch updated conversations
-                API.getConversations()
-                    .then((res) => {
-                        const conversations = res.data.conversations || [];
-                        console.log(`✅ Fetched ${conversations.length} conversations after broadcast event`);
-                        setConversations(conversations);
+            // These events should trigger a sidebar refresh
+            const refreshEvents = [
+                "messageReceived",
+                "conversationUpdated",
+                "newConversationVisible",
+                "conversationBecameVisible",
+                "newConversationCreated"
+            ];
 
-                        // Join the new conversation room
-                        if (data.conversationId) {
-                            joinConversation(data.conversationId);
-                            console.log(`🔗 Joined conversation room via broadcast: ${data.conversationId}`);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("❌ Error fetching conversations after broadcast:", error);
-                    });
-            } else {
-                console.log("ℹ️ Broadcast not relevant for this user");
+            if (refreshEvents.includes(event)) {
+                console.log(`🔄 Refreshing sidebar due to ${event} event`);
+                refreshConversations();
             }
-        };
-
-        const messageSeenHandler = (data) => {
-            console.log("👁️ Sidebar received messageSeen event:", data);
-            handleMessageSeen(data, setUnreadMap);
-        };
-
-        const messagesSeenHandler = (data) => {
-            console.log("👁️ Sidebar received messagesSeen event:", data);
-            handleMessageSeen(data, setUnreadMap);
-        };
-
-        // Listen for new messages to update conversation list
-        socket.on("messageReceived", messageReceivedHandler);
-
-        // Listen for conversation updates
-        socket.on("conversationUpdated", conversationUpdatedHandler);
-
-        // Listen for new conversation visibility events
-        socket.on("newConversationVisible", newConversationVisibleHandler);
-        socket.on("conversationBecameVisible", conversationBecameVisibleHandler);
-
-        // Listen for message seen events to reset unread counts
-        socket.on("messageSeen", messageSeenHandler);
-        socket.on("messagesSeen", messagesSeenHandler);
-
-        // Listen for message delivered events (optional - for future use)
-        socket.on("messageDelivered", (data) => {
-            // Could be used for delivery status indicators in the future
         });
 
-        return () => {
-            socket.off("messageReceived", messageReceivedHandler);
-            socket.off("conversationUpdated", conversationUpdatedHandler);
-            socket.off("newConversationVisible", newConversationVisibleHandler);
-            socket.off("conversationBecameVisible", conversationBecameVisibleHandler);
-            socket.off("messageSeen", messageSeenHandler);
-            socket.off("messagesSeen", messagesSeenHandler);
-            socket.off("messageDelivered");
+        // Listen for the global update event - this is our most reliable trigger
+        socket.on("globalUpdate", (data) => {
+            console.log("🌎 Global update received:", data);
+            refreshConversations();
+        });
+
+        // Also refresh when a message is received (most important case)
+        socket.on("messageReceived", (msg) => {
+            console.log("📨 Message received, refreshing sidebar");
+            refreshConversations();
+
+            // Process the message for unread counts
+            handleMessageReceived(msg, setConversations, setUnreadMap, selectedConversationRef.current, API, getUserId);
+        });
+
+        // Refresh when window gets focus
+        const handleFocus = () => {
+            console.log("🔄 Window focused, refreshing conversations");
+            refreshConversations();
         };
-    }, [getUserId]); // Remove selectedConversation from dependencies
+
+        window.addEventListener('focus', handleFocus);
+
+        // Initial refresh
+        refreshConversations();
+
+        // Set up periodic refresh every 10 seconds as a fallback
+        const refreshInterval = setInterval(refreshConversations, 10000);
+
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            clearInterval(refreshInterval);
+            socket.offAny();
+            socket.off("messageReceived");
+            socket.off("globalUpdate");
+        };
+    }, [getUserId]);
+
+    // Note: We've removed the old socket event handling code and replaced it with our simplified approach above
 
     // Expose functions to parent component
     React.useImperativeHandle(ref, () => ({
@@ -408,129 +500,412 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
     // Handle when user sends a message (to move conversation to top)
     useEffect(() => {
         if (onMessageSent) {
+            console.log("Message sent, updating sidebar:", onMessageSent);
+
+            // First try to update the conversation in the sidebar
             handleUserMessageSent(onMessageSent, setConversations);
+
+            // As a fallback, also refresh all conversations to ensure sidebar is updated
+            // This is especially important for file/image messages
+            setTimeout(() => {
+                API.getConversations()
+                    .then((res) => {
+                        const conversations = res.data.conversations || [];
+                        setConversations(conversations);
+                        console.log("Refreshed all conversations after message sent");
+                    })
+                    .catch((error) => {
+                        console.error("Error refreshing conversations after message sent:", error);
+                    });
+            }, 1000);
         }
     }, [onMessageSent]);
 
+    // Get user data from Redux
+    const userData = useSelector((state) => state.loginUser?.data?.data);
+    const dispatch = useDispatch();
+
+    // Toggle sidebar collapse
+    const toggleSidebar = () => {
+        setCollapsed(!collapsed);
+    };
+
+    // Toggle user menu
+    const toggleUserMenu = () => {
+        setShowUserMenu(!showUserMenu);
+    };
+
+    // Handle logout
+    const handleLogout = () => {
+        // Disconnect from socket
+        disconnectSocket();
+
+        // Dispatch logout action which will clear Redux state and storage
+        dispatch(performLogout());
+    };
+
+    // Format date for conversation timestamp
+    const formatMessageTime = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+
+        // If today, show time
+        if (date.toDateString() === now.toDateString()) {
+            return date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // If this week, show day name
+        const daysDiff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        if (daysDiff < 7) {
+            return date.toLocaleDateString([], { weekday: 'short' });
+        }
+
+        // Otherwise show date
+        return date.toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
     return (
-        <div className="w-80 bg-gray-900 text-white flex flex-col p-4 border-r border-gray-800">
-            <div className="flex items-center mb-4">
-                <button onClick={handleSearchClick} className="mr-2">
-                    <FaSearch />
-                </button>
-                {searchOpen && (
-                    <input
-                        className="bg-gray-800 rounded px-2 py-1 ml-2 flex-1"
-                        placeholder="Search users..."
-                        value={search}
-                        onChange={handleSearchChange}
-                    />
+        <div className={`${collapsed ? 'w-16' : 'w-80'} bg-gray-900 text-white flex flex-col border-r border-gray-800 transition-all duration-300 relative h-full`}>
+            {/* Collapse toggle button */}
+            <button
+                onClick={toggleSidebar}
+                className="absolute -right-3 top-1/2 transform -translate-y-1/2 bg-gray-700 rounded-full p-1 z-10 hover:bg-gray-600 transition-colors"
+            >
+                {collapsed ? <FaChevronRight size={12} /> : <FaChevronLeft size={12} />}
+            </button>
+
+            {/* Header with user profile */}
+            <div className="bg-gray-800 p-3 flex items-center justify-between">
+                {!collapsed ? (
+                    <>
+                        <div className="flex items-center space-x-2">
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                                {userData?.profilePicture ? (
+                                    <img
+                                        src={userData.profilePicture}
+                                        alt={userData?.name || "User"}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <FaUserCircle size={36} className="text-gray-500" />
+                                )}
+                            </div>
+                            <div className="font-medium truncate">
+                                {userData?.name || "User"}
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <button onClick={handleSearchClick} className="text-gray-400 hover:text-white">
+                                <FaSearch size={18} />
+                            </button>
+                            <button onClick={toggleUserMenu} className="text-gray-400 hover:text-white relative">
+                                <BsThreeDotsVertical size={20} />
+                                {showUserMenu && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-10">
+                                        <button className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                                            Profile
+                                        </button>
+                                        <button className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                                            Settings
+                                        </button>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                                        >
+                                            Logout
+                                        </button>
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <div className="w-full flex justify-center">
+                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                            {userData?.profilePicture ? (
+                                <img
+                                    src={userData.profilePicture}
+                                    alt={userData?.name || "User"}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <FaUserCircle size={24} className="text-gray-500" />
+                            )}
+                        </div>
+                    </div>
                 )}
             </div>
-            {searchOpen && results.length > 0 && (
-                <div className="bg-gray-800 rounded p-2 mb-2">
+
+            {/* Search bar */}
+            {!collapsed && searchOpen && (
+                <div className="p-2 bg-gray-800 border-b border-gray-700">
+                    <div className="bg-gray-700 rounded-lg flex items-center px-3 py-1.5">
+                        <FaSearch className="text-gray-400 mr-2" size={14} />
+                        <input
+                            className="bg-transparent border-none outline-none w-full text-white placeholder-gray-400 text-sm"
+                            placeholder="Search users..."
+                            value={search}
+                            onChange={handleSearchChange}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Search results */}
+            {!collapsed && searchOpen && results.length > 0 && (
+                <div className="bg-gray-800 p-2 mb-1 max-h-60 overflow-y-auto">
                     {results.map((user) => (
                         <button
                             key={user._id}
                             type="button"
-                            className="p-2 hover:bg-gray-700 rounded cursor-pointer w-full text-left"
+                            className="p-2 hover:bg-gray-700 rounded-lg cursor-pointer w-full text-left flex items-center"
                             onClick={() => onUserClick && onUserClick(user)}
                         >
-                            {user.name} ({user.email})
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center mr-3 overflow-hidden">
+                                {user.profilePicture ? (
+                                    <img
+                                        src={user.profilePicture}
+                                        alt={user.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <FaUserCircle size={24} className="text-gray-500" />
+                                )}
+                            </div>
+                            <div>
+                                <div className="font-medium text-white">{user.name}</div>
+                                <div className="text-xs text-gray-400">{user.email}</div>
+                            </div>
                         </button>
                     ))}
                 </div>
             )}
-            {/* List of chats/conversations here */}
-            <div className="mt-4 flex-1 overflow-y-auto">
+
+            {/* Conversations list */}
+            <div className={`flex-1 overflow-y-auto ${!collapsed ? 'px-1' : 'px-0'}`}>
                 {conversations.length === 0 ? (
-                    <div className="text-gray-400">Your chats will appear here.</div>
+                    <div className={`text-gray-400 p-4 text-center ${collapsed ? 'text-xs' : ''}`}>
+                        {collapsed ? "No chats" : "Your chats will appear here."}
+                    </div>
                 ) : (
                     conversations.map((conv) => {
                         const unread = unreadMap[conv._id]?.count || 0;
                         const lastUnreadMsg = unreadMap[conv._id]?.lastMessage;
+                        const isSelected = selectedConversation?._id === conv._id;
 
                         // Extract message display logic into a variable
-                        let messageDisplay;
+                        let messageContent;
+                        let messagePreview;
+                        const currentUserId = getUserId();
+
                         if (unread > 0) {
-                            messageDisplay = (
+                            const messageToShow = unread === 1 ? lastUnreadMsg : (lastUnreadMsg || conv.lastMessage);
+
+                            // Determine content based on message type
+                            let content = "";
+                            if (messageToShow?.image) {
+                                // For images, show "Photo" with the file name if available
+                                content = messageToShow.fileName
+                                    ? `📷 Photo: ${messageToShow.fileName}`
+                                    : "📷 Photo";
+                                console.log("Image message in sidebar:", messageToShow);
+                            } else if (messageToShow?.file) {
+                                // For files, show the file name if available
+                                content = messageToShow.fileName
+                                    ? `📎 ${messageToShow.fileName}`
+                                    : "📎 File attachment";
+                                console.log("File message in sidebar:", messageToShow);
+                            } else {
+                                content = messageToShow?.content || "";
+                            }
+
+                            // For group chats, show sender name
+                            if (conv.isGroupChat && messageToShow?.sender?.name) {
+                                const senderName = messageToShow.sender._id === currentUserId ? "You" : messageToShow.sender.name;
+                                messageContent = `${senderName}: ${content}`;
+                            } else {
+                                messageContent = content;
+                            }
+
+                            messagePreview = (
                                 <div className="flex items-center justify-between">
-                                    <div className="text-sm font-bold text-white truncate flex-1 mr-2">
-                                        {(() => {
-                                            const messageToShow = unread === 1 ? lastUnreadMsg : (lastUnreadMsg || conv.lastMessage);
-                                            const content = messageToShow?.content || "File attachment";
-
-                                            // For group chats, show sender name
-                                            if (conv.isGroupChat && messageToShow?.sender?.name) {
-                                                const currentUserId = getUserId();
-                                                const senderName = messageToShow.sender._id === currentUserId ? "You" : messageToShow.sender.name;
-                                                return `${senderName}: ${content}`;
-                                            }
-
-                                            return content;
-                                        })()}
+                                    <div className="text-sm font-semibold text-white truncate flex-1 mr-2">
+                                        {messageContent}
                                     </div>
-                                    {unread > 1 && (
-                                        <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-1 font-bold min-w-[20px] text-center">
-                                            {unread}
-                                        </span>
-                                    )}
                                 </div>
                             );
                         } else if (conv.lastMessage) {
-                            messageDisplay = (
-                                <div className="text-sm text-gray-400 truncate">
-                                    {(() => {
-                                        const content = conv.lastMessage.content || "File attachment";
+                            // Determine content based on message type
+                            let content = "";
+                            if (conv.lastMessage.image) {
+                                // For images, show "Photo" with the file name if available
+                                content = conv.lastMessage.fileName
+                                    ? `📷 Photo: ${conv.lastMessage.fileName}`
+                                    : "📷 Photo";
+                                console.log("Image message in sidebar (regular):", conv.lastMessage);
+                            } else if (conv.lastMessage.file) {
+                                // For files, show the file name if available
+                                content = conv.lastMessage.fileName
+                                    ? `📎 ${conv.lastMessage.fileName}`
+                                    : "📎 File attachment";
+                                console.log("File message in sidebar (regular):", conv.lastMessage);
+                            } else {
+                                content = conv.lastMessage.content || "";
+                            }
 
-                                        // For group chats, show sender name
-                                        if (conv.isGroupChat && conv.lastMessage.sender?.name) {
-                                            const currentUserId = getUserId();
-                                            const senderName = conv.lastMessage.sender._id === currentUserId ? "You" : conv.lastMessage.sender.name;
-                                            return `${senderName}: ${content}`;
-                                        }
+                            const isFromCurrentUser = conv.lastMessage.sender?._id === currentUserId;
 
-                                        return content;
-                                    })()}
+                            // For group chats, show sender name
+                            if (conv.isGroupChat && conv.lastMessage.sender?.name) {
+                                const senderName = isFromCurrentUser ? "You" : conv.lastMessage.sender.name;
+                                messageContent = `${senderName}: ${content}`;
+                            } else {
+                                messageContent = content;
+                            }
+
+                            // Show message status indicators for messages sent by current user
+                            const messageStatus = isFromCurrentUser ? (
+                                <div className="ml-1 flex-shrink-0">
+                                    {conv.lastMessage.seen ? (
+                                        <div className="flex" title="Read">
+                                            <svg className="w-3 h-3 text-blue-400 -mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                            <svg className="w-3 h-3 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    ) : conv.lastMessage.delivered ? (
+                                        <div className="flex" title="Delivered">
+                                            <svg className="w-3 h-3 text-gray-400 -mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                    ) : (
+                                        <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20" title="Sent">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                    )}
+                                </div>
+                            ) : null;
+
+                            messagePreview = (
+                                <div className="text-sm text-gray-400 truncate flex items-center">
+                                    <span className="truncate flex-1">{messageContent}</span>
+                                    {messageStatus}
                                 </div>
                             );
                         } else {
-                            messageDisplay = (
+                            messageContent = "No messages yet";
+                            messagePreview = (
                                 <div className="text-sm text-gray-500 italic">
-                                    No messages yet
+                                    {messageContent}
                                 </div>
                             );
                         }
 
+                        if (collapsed) {
+                            // Collapsed view - just show avatar with notification badge
+                            return (
+                                <button
+                                    key={conv._id}
+                                    type="button"
+                                    className={`w-full flex justify-center py-3 hover:bg-gray-800 cursor-pointer relative ${isSelected ? 'bg-gray-700' : ''
+                                        }`}
+                                    onClick={() => onConversationClick(conv)}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden relative">
+                                        {conv.groupImage ? (
+                                            <img
+                                                src={conv.groupImage}
+                                                alt={conv.isGroupChat ? conv.groupName : conv.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <FaUserCircle size={24} className="text-gray-500" />
+                                        )}
+
+                                        {unread > 0 && (
+                                            <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                                {unread > 9 ? '9+' : unread}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        }
+
+                        // Full view
                         return (
                             <button
                                 key={conv._id}
                                 type="button"
-                                className={`w-full text-left p-2 hover:bg-gray-800 rounded cursor-pointer border-b border-gray-700 ${unread > 0 ? 'bg-gray-800/50 border-l-4 border-l-blue-500' : ''
-                                    } ${selectedConversation?._id === conv._id ? 'bg-gray-700' : ''
-                                    }`}
+                                className={`w-full text-left p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-800 flex items-center ${unread > 0 ? 'bg-gray-800/50' : ''
+                                    } ${isSelected ? 'bg-gray-700' : ''}`}
                                 onClick={() => onConversationClick(conv)}
                             >
-                                <div className={`font-semibold ${unread > 0 ? 'text-white' : 'text-gray-300'}`}>
-                                    {conv.isGroupChat ? conv.groupName : conv.name}
+                                <div className="w-12 h-12 rounded-full bg-gray-700 flex-shrink-0 flex items-center justify-center mr-3 overflow-hidden">
+                                    {conv.groupImage ? (
+                                        <img
+                                            src={conv.groupImage}
+                                            alt={conv.isGroupChat ? conv.groupName : conv.name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <FaUserCircle size={32} className="text-gray-500" />
+                                    )}
                                 </div>
 
-                                {/* Message display logic based on unread count */}
-                                {messageDisplay}
-                                {conv.lastActivity && (
-                                    <div className="text-xs text-gray-500">
-                                        {new Date(conv.lastActivity).toLocaleTimeString([], {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <div className={`font-medium truncate ${unread > 0 ? 'text-white' : 'text-gray-300'}`}>
+                                            {conv.isGroupChat ? conv.groupName : conv.name}
+                                        </div>
+
+                                        {conv.lastActivity && (
+                                            <div className={`text-xs ${unread > 0 ? 'text-blue-400' : 'text-gray-500'} ml-2 flex-shrink-0`}>
+                                                {formatMessageTime(conv.lastActivity)}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+
+                                    <div className="flex items-center justify-between">
+                                        {messagePreview}
+
+                                        {unread > 0 && (
+                                            <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ml-2 flex-shrink-0">
+                                                {unread > 9 ? '9+' : unread}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
                             </button>
                         );
                     })
                 )}
             </div>
-            {/* TODO: User profile and logout button */}
+
+            {/* New chat button - only in expanded view */}
+            {!collapsed && (
+                <div className="p-3 border-t border-gray-800">
+                    <button
+                        onClick={handleSearchClick}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center transition-colors"
+                    >
+                        <BsChatLeftTextFill className="mr-2" />
+                        New Chat
+                    </button>
+                </div>
+            )}
         </div>
     );
 });

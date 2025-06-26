@@ -5,6 +5,7 @@ import ProfileModal from "@/components/Chat/ProfileModal";
 import { useGlobalMessageStatus } from "@/hooks/useGlobalMessageStatus";
 import API from "@/services/api";
 import { connectSocket, joinConversation } from "@/services/socket";
+import { BsChatLeftTextFill } from "react-icons/bs";
 
 const ChatScreen = () => {
     const [selectedUser, setSelectedUser] = useState(null);
@@ -44,11 +45,23 @@ const ChatScreen = () => {
     };
 
     const handleMessageSent = (messageData) => {
+        if (!messageData) return;
+
         // Add conversationId to the message data if it's not already there
         const messageWithConversation = {
             ...messageData,
-            conversationId: messageData.conversation || selectedConversation?._id
+            conversationId: messageData.conversation || messageData.conversationId || selectedConversation?._id
         };
+
+        // Log the message data for debugging
+        console.log("Message sent:", messageWithConversation);
+
+        // Ensure we have all the necessary data for sidebar updates
+        if (!messageWithConversation.conversationId) {
+            console.error("Missing conversationId in message data");
+            return;
+        }
+
         setLastMessageSent(messageWithConversation);
     };
 
@@ -81,7 +94,7 @@ const ChatScreen = () => {
     };
 
     return (
-        <div className="flex h-screen bg-dark-bg">
+        <div className="flex h-screen bg-dark-bg overflow-hidden">
             <Sidebar
                 ref={sidebarRef}
                 onUserClick={handleUserClick}
@@ -89,10 +102,22 @@ const ChatScreen = () => {
                 selectedConversation={selectedConversation}
                 onMessageSent={lastMessageSent}
             />
-            <ChatWindow
-                conversation={selectedConversation}
-                onMessageSent={handleMessageSent}
-            />
+            {selectedConversation ? (
+                <ChatWindow
+                    conversation={selectedConversation}
+                    onMessageSent={handleMessageSent}
+                />
+            ) : (
+                <div className="flex-1 flex items-center justify-center bg-gray-900 text-gray-400">
+                    <div className="text-center p-8">
+                        <BsChatLeftTextFill className="mx-auto text-gray-700 mb-4" size={64} />
+                        <h2 className="text-xl font-semibold mb-2">Welcome to QuickChat</h2>
+                        <p className="max-w-md">
+                            Select a conversation from the sidebar or start a new chat to begin messaging.
+                        </p>
+                    </div>
+                </div>
+            )}
             {showProfile && (
                 <ProfileModal
                     user={selectedUser}

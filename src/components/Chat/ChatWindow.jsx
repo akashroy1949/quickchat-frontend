@@ -15,9 +15,9 @@ const ChatWindow = ({ conversation, onMessageSent }) => {
     };
 
     return (
-        <div className="flex flex-col flex-1 h-full relative">
+        <div className="flex flex-col flex-1 h-full relative bg-gray-900">
             <ChatHeader conversation={conversation} />
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-[#0b141a] bg-opacity-95 bg-[url('/chat-bg.png')] bg-repeat">
                 <MessageList
                     conversationId={conversation?._id}
                     newMessage={newMessage}
@@ -29,7 +29,6 @@ const ChatWindow = ({ conversation, onMessageSent }) => {
                 conversation={conversation}
                 onMessageSent={handleMessageSent}
             />
-
         </div>
     );
 };
