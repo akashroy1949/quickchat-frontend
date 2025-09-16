@@ -1,20 +1,20 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import API from "@/services/api";
-import { connectSocket, markMessagesSeen, markMessagesDelivered, joinConversation, leaveConversation, getSocket } from "@/services/socket";
+import { connectSocket, markMessagesSeen, markMessagesDelivered, joinConversation, leaveConversation } from "@/services/socket";
 import {
     normalizeMessage,
     updateMessageDelivered,
     updateMessagesSeen,
-    getUnseenMessageIds,
     getUndeliveredMessageIds
 } from "@/utils/messageStatus";
 import { useGlobalMessageStatus } from "@/hooks/useGlobalMessageStatus";
 
-import messageStatusManager, { addStatusListener, applyStatusUpdates } from "@/utils/messageStatusManager";
+import { addStatusListener, applyStatusUpdates } from "@/utils/messageStatusManager";
 import { subscribeToStatusUpdates } from "@/services/messageStatusService";
 import TypingIndicator from "./TypingIndicator";
 import Message from "./Message";
+import PinnedMessages from "./PinnedMessages";
 import PropTypes from "prop-types";
 
 const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
@@ -23,12 +23,30 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
     const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
     const messagesRef = useRef([]);
     const messagesEndRef = useRef(null);
+    const messageElementsRef = useRef({});
+
+    // Function to scroll to a specific message (used for pinned messages)
+    const scrollToMessage = (messageId) => {
+        if (messageElementsRef.current[messageId]) {
+            messageElementsRef.current[messageId].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+
+            // Highlight the message briefly
+            const element = messageElementsRef.current[messageId];
+            element.classList.add('bg-yellow-500/20');
+            setTimeout(() => {
+                element.classList.remove('bg-yellow-500/20');
+            }, 2000);
+        }
+    };
 
     // Get user data from Redux as fallback
     const loginData = useSelector((state) => state.loginUser);
 
     // Use global message status hook
-    const { userId: globalUserId } = useGlobalMessageStatus();
+    useGlobalMessageStatus();
 
     // Helper function to get userId
     const getUserId = React.useCallback(() => {
@@ -42,6 +60,27 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
 
     // Get current user ID once and memoize it
     const currentUserId = getUserId();
+
+    // Debug logging for currentUserId
+    React.useEffect(() => {
+        console.log("🔍 MessageList: currentUserId =", currentUserId);
+    }, [currentUserId]);
+
+    // Handle message updates (edit, delete, pin, react)
+    const handleMessageUpdate = (updatedMessage) => {
+        setMessages(prevMessages => {
+            const updatedMessages = prevMessages.map(msg =>
+                msg._id === updatedMessage._id ? updatedMessage : msg
+            );
+            messagesRef.current = updatedMessages;
+
+            if (onMessagesUpdate) {
+                onMessagesUpdate(updatedMessages);
+            }
+
+            return updatedMessages;
+        });
+    };
 
     // Listen for status updates from the centralized manager
     useEffect(() => {
@@ -264,6 +303,19 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
 
         API.fetchMessages({ conversationId })
             .then(res => {
+                console.log("📨 Fetched messages from backend:", res.data.messages);
+
+                // Check if any messages have reactions
+                const messagesWithReactions = res.data.messages.filter(msg => msg.reactions && msg.reactions.length > 0);
+                if (messagesWithReactions.length > 0) {
+                    console.log("🎯 Messages with reactions:", messagesWithReactions.map(msg => ({
+                        id: msg._id,
+                        reactions: msg.reactions
+                    })));
+                } else {
+                    console.log("⚠️ No messages with reactions found");
+                }
+
                 // Normalize messages with proper status handling
                 let messagesWithStatus = (res.data.messages || []).map(normalizeMessage);
 
@@ -304,7 +356,6 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
 
         socket.on("messageReceived", (msg) => {
             if (msg.conversationId === conversationId) {
-
                 // Normalize the received message
                 const messageWithStatus = normalizeMessage(msg);
 
@@ -319,6 +370,107 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
                 setTimeout(() => {
                     markMessagesDelivered(conversationId, [msg._id], userId);
                 }, 100); // Reduced delay for faster status updates
+            }
+        });
+
+        // Listen for message edited events
+        socket.on("messageEdited", (data) => {
+            if (data.conversation === conversationId) {
+                setMessages(prev => {
+                    const updatedMessages = prev.map(msg => {
+                        if (msg._id === data.messageId) {
+                            return {
+                                ...msg,
+                                content: data.content,
+                                isEdited: data.isEdited,
+                                editedAt: data.editedAt
+                            };
+                        }
+                        return msg;
+                    });
+                    messagesRef.current = updatedMessages;
+
+                    if (onMessagesUpdate) {
+                        onMessagesUpdate(updatedMessages);
+                    }
+
+                    return updatedMessages;
+                });
+            }
+        });
+
+        // Listen for message deleted events
+        socket.on("messageDeleted", (data) => {
+            if (data.conversation === conversationId) {
+                setMessages(prev => {
+                    const updatedMessages = prev.map(msg => {
+                        if (msg._id === data.messageId) {
+                            return {
+                                ...msg,
+                                isDeleted: true,
+                                deletedAt: new Date().toISOString()
+                            };
+                        }
+                        return msg;
+                    });
+                    messagesRef.current = updatedMessages;
+
+                    if (onMessagesUpdate) {
+                        onMessagesUpdate(updatedMessages);
+                    }
+
+                    return updatedMessages;
+                });
+            }
+        });
+
+        // Listen for message pinned events
+        socket.on("messagePinned", (data) => {
+            if (data.conversation === conversationId) {
+                setMessages(prev => {
+                    const updatedMessages = prev.map(msg => {
+                        if (msg._id === data.messageId) {
+                            return {
+                                ...msg,
+                                isPinned: data.isPinned,
+                                pinnedAt: data.pinnedAt,
+                                pinnedBy: data.pinnedBy
+                            };
+                        }
+                        return msg;
+                    });
+                    messagesRef.current = updatedMessages;
+
+                    if (onMessagesUpdate) {
+                        onMessagesUpdate(updatedMessages);
+                    }
+
+                    return updatedMessages;
+                });
+            }
+        });
+
+        // Listen for message reaction events
+        socket.on("messageReaction", (data) => {
+            if (data.conversation === conversationId) {
+                setMessages(prev => {
+                    const updatedMessages = prev.map(msg => {
+                        if (msg._id === data.messageId) {
+                            return {
+                                ...msg,
+                                reactions: data.reactions
+                            };
+                        }
+                        return msg;
+                    });
+                    messagesRef.current = updatedMessages;
+
+                    if (onMessagesUpdate) {
+                        onMessagesUpdate(updatedMessages);
+                    }
+
+                    return updatedMessages;
+                });
             }
         });
 
@@ -347,7 +499,7 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
 
         const handleStopTyping = (data) => {
             console.log("✋ Stop typing event received:", data);
-            
+
             // Only process stop typing events for the current conversation
             if (data.conversationId !== conversationId) {
                 console.log("🚫 Ignoring stop typing event for different conversation");
@@ -381,6 +533,10 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
 
 
             socket.off("messageReceived");
+            socket.off("messageEdited");
+            socket.off("messageDeleted");
+            socket.off("messagePinned");
+            socket.off("messageReaction");
             socket.off("typing", handleTyping);
             socket.off("stopTyping", handleStopTyping);
             socket.off("conversationUpdated");
@@ -442,60 +598,74 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
     }, [messages, conversationId, getUserId]);
 
     return (
-        <div className="p-4 h-full">
+        <div className="flex-1 overflow-y-auto p-4">
             {messages.length === 0 ? (
                 <div className="flex justify-center items-center h-full">
-                    <div className="bg-gray-800/30 p-6 rounded-lg text-gray-300 text-center max-w-md">
+                    <div className="bg-gray-800 p-6 rounded-lg text-gray-300 text-center max-w-md">
                         <div className="text-4xl mb-4">💬</div>
                         <div className="text-xl font-medium mb-2">No messages yet</div>
-                        <div className="text-sm text-gray-400">
+                        <div className="text-gray-400">
                             Start the conversation by sending a message below!
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className="space-y-1">
-                    {messages.map((msg, index) => {
-                        // Group messages by date
-                        const msgDate = new Date(msg.createdAt || msg.timestamp).toLocaleDateString();
-                        const prevMsg = index > 0 ? messages[index - 1] : null;
-                        const prevMsgDate = prevMsg ? new Date(prevMsg.createdAt || prevMsg.timestamp).toLocaleDateString() : null;
+                <>
+                    {/* Pinned Messages Section */}
+                    <PinnedMessages
+                        messages={messages}
+                        currentUserId={currentUserId}
+                        onScrollToMessage={scrollToMessage}
+                    />
 
-                        // Show date separator if this is the first message or if the date changed
-                        const showDateSeparator = !prevMsg || msgDate !== prevMsgDate;
+                    <div className="space-y-2">
+                        {messages.map((msg, index) => {
+                            // Group messages by date
+                            const msgDate = new Date(msg.createdAt || msg.timestamp).toLocaleDateString();
+                            const prevMsg = index > 0 ? messages[index - 1] : null;
+                            const prevMsgDate = prevMsg ? new Date(prevMsg.createdAt || prevMsg.timestamp).toLocaleDateString() : null;
 
-                        // Check if consecutive messages are from the same sender
-                        const isSameSenderAsPrev = prevMsg &&
-                            prevMsg.sender?._id === msg.sender?._id &&
-                            msgDate === prevMsgDate &&
-                            // Messages within 2 minutes are grouped
-                            (new Date(msg.createdAt || msg.timestamp) - new Date(prevMsg.createdAt || prevMsg.timestamp)) < 120000;
+                            // Show date separator if this is the first message or if the date changed
+                            const showDateSeparator = !prevMsg || msgDate !== prevMsgDate;
 
-                        return (
-                            <React.Fragment key={`${msg._id}-${forceUpdateCounter}`}>
-                                {showDateSeparator && (
-                                    <div className="flex justify-center my-4">
-                                        <div className="bg-gray-700 text-gray-300 text-xs px-3 py-1 rounded-full">
-                                            {new Date(msg.createdAt || msg.timestamp).toLocaleDateString(undefined, {
-                                                weekday: 'long',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                            })}
+                            // Check if consecutive messages are from the same sender
+                            const isSameSenderAsPrev = prevMsg &&
+                                prevMsg.sender?._id === msg.sender?._id &&
+                                msgDate === prevMsgDate &&
+                                // Messages within 2 minutes are grouped
+                                (new Date(msg.createdAt || msg.timestamp) - new Date(prevMsg.createdAt || prevMsg.timestamp)) < 120000;
+
+                            return (
+                                <div
+                                    key={`${msg._id}-${forceUpdateCounter}`}
+                                    ref={el => messageElementsRef.current[msg._id] = el}
+                                    className="transition-colors duration-500"
+                                >
+                                    {showDateSeparator && (
+                                        <div className="flex justify-center my-4">
+                                            <div className="bg-gray-800 text-gray-400 text-xs px-3 py-1 rounded-full">
+                                                {new Date(msg.createdAt || msg.timestamp).toLocaleDateString(undefined, {
+                                                    weekday: 'long',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric'
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                <Message
-                                    message={msg}
-                                    currentUserId={currentUserId}
-                                    conversationId={conversationId}
-                                    isLastMessage={index === messages.length - 1}
-                                    isContinuation={isSameSenderAsPrev}
-                                />
-                            </React.Fragment>
-                        );
-                    })}
-                </div>
+                                    )}
+                                    <Message
+                                        message={msg}
+                                        currentUserId={currentUserId || ""}
+                                        conversationId={conversationId}
+                                        isLastMessage={index === messages.length - 1}
+                                        isContinuation={isSameSenderAsPrev}
+                                        onMessageUpdate={handleMessageUpdate}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
 
             {/* Typing indicators */}

@@ -36,6 +36,11 @@ const API = {
     getConversations: () => apiInstance.get("/conversations"),
     createConversation: (data) => apiInstance.post("/conversations", data),
     getConversationById: (id) => apiInstance.get(`/conversations/${id}`),
+    getChatStatistics: (conversationId) => apiInstance.get(`/conversations/${conversationId}/statistics`),
+    exportChat: (conversationId, format = 'pdf') => apiInstance.get(`/conversations/${conversationId}/export?format=${format}`, {
+        responseType: 'blob'
+    }),
+    deleteConversation: (conversationId) => apiInstance.delete(`/conversations/${conversationId}`),
 
     // MESSAGES
     fetchMessages: (params) => apiInstance.get("/messages", { params }),
@@ -45,6 +50,10 @@ const API = {
     getDirectMessages: (userId) => apiInstance.get(`/messages/${userId}`),
     markMessagesSeen: (data) => apiInstance.put("/messages/markSeen", data),
     markEphemeralViewed: (messageId) => apiInstance.put(`/messages/markEphemeral/${messageId}`),
+    editMessage: (messageId, content) => apiInstance.put(`/messages/${messageId}`, { content }),
+    deleteMessage: (messageId) => apiInstance.delete(`/messages/${messageId}`),
+    pinMessage: (messageId) => apiInstance.put(`/messages/${messageId}/pin`),
+    reactToMessage: (messageId, emoji) => apiInstance.put(`/messages/${messageId}/react`, { emoji }),
 
     // UPLOADS
     uploadFile: (formData) => apiInstance.post("/uploads", formData, {

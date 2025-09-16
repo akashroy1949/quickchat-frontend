@@ -1,12 +1,20 @@
 import { combineReducers } from "redux";
 import { loginUserReducer } from "./reducers/loginUserReducer";
 import { registerUserReducer } from "./reducers/registerUserReducer";
+import userReducer from "./reducers/userReducer";
+import chatStatisticsReducer from "./reducers/chatStatisticsReducer";
+import exportChatReducer from "./reducers/exportChatReducer";
+import deleteConversationReducer from "./reducers/deleteConversationReducer";
 import { LOGOUT } from "./actions/actionTypes";
 
 // Combine all reducers
 const appReducer = combineReducers({
     loginUser: loginUserReducer,
     registerUser: registerUserReducer,
+    user: userReducer,
+    chatStatistics: chatStatisticsReducer,
+    exportChat: exportChatReducer,
+    deleteConversation: deleteConversationReducer,
 });
 
 // Root reducer with logout handling
