@@ -27,6 +27,7 @@ const API = {
     getProfile: () => apiInstance.get("/user/getProfile"),
     searchUsers: (query) => apiInstance.get(`/user/search?query=${encodeURIComponent(query)}`),
     getUserById: (id) => apiInstance.get(`/user/${id}`),
+    getOnlineUsers: () => apiInstance.get("/user/online"),
     updateProfile: (formData) => apiInstance.put("/user/updateProfile", formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
     }),
