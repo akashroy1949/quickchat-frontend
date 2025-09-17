@@ -51,8 +51,8 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
     // Helper function to get userId
     const getUserId = React.useCallback(() => {
         let userId = localStorage.getItem("userId");
-        if (!userId && loginData?.data?.data?._id) {
-            userId = loginData.data.data._id;
+        if (!userId && (loginData?.data?.userId || loginData?.data?.data?._id)) {
+            userId = loginData.data.userId || loginData.data.data._id;
             localStorage.setItem("userId", userId); // Store it for future use
         }
         return userId;
@@ -655,7 +655,7 @@ const MessageList = ({ conversationId, newMessage, onMessagesUpdate }) => {
                                     )}
                                     <Message
                                         message={msg}
-                                        currentUserId={currentUserId || ""}
+                                        currentUserId={currentUserId}
                                         conversationId={conversationId}
                                         isLastMessage={index === messages.length - 1}
                                         isContinuation={isSameSenderAsPrev}

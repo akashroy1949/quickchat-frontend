@@ -10,8 +10,9 @@ export const loginUserAction = (data, successCB, errorCB) => async (dispatch) =>
         if (res?.data?.token) {
             localStorage.setItem("token", res.data.token);
         }
-        if (res?.data?.data?._id) {
-            localStorage.setItem("userId", res.data.data._id);
+        if (res?.data?.userId || res?.data?.data?._id) {
+            const userId = res.data.userId || res.data.data._id;
+            localStorage.setItem("userId", userId);
         }
         dispatch(set_login_user_success(res?.data));
         if (successCB) successCB(res?.data);

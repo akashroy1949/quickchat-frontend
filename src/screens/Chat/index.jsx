@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Chat/Sidebar";
 import ChatWindow from "@/components/Chat/ChatWindow";
 import ProfileModal from "@/components/Chat/ProfileModal";
@@ -8,11 +9,29 @@ import { connectSocket, joinConversation } from "@/services/socket";
 import { BsChatLeftTextFill } from "react-icons/bs";
 
 const ChatScreen = () => {
+    const navigate = useNavigate();
     const [selectedUser, setSelectedUser] = useState(null);
     const [showProfile, setShowProfile] = useState(false);
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [lastMessageSent, setLastMessageSent] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const sidebarRef = React.useRef(null);
+
+    // Check authentication on component mount
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId");
+
+        // If no token or userId in localStorage, redirect to login
+        if (!token || !userId) {
+            console.warn("⚠️ No authentication found, redirecting to login");
+            navigate("/login");
+            return;
+        }
+
+        // User is authenticated
+        setIsAuthenticated(true);
+    }, [navigate]);
 
     // Enable global message status tracking
     useGlobalMessageStatus();
@@ -92,6 +111,19 @@ const ChatScreen = () => {
             return null;
         }
     };
+
+    // Show loading or redirect message while checking authentication
+    if (!isAuthenticated) {
+        return (
+            <div className="flex h-screen bg-gray-900 items-center justify-center text-gray-400">
+                <div className="text-center p-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+                    <h2 className="text-xl font-semibold mb-2">Checking authentication...</h2>
+                    <p>Redirecting to login if you're not authenticated.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen bg-gray-900 overflow-hidden w-full">

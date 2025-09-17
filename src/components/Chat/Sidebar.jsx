@@ -13,7 +13,16 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
     const [search, setSearch] = useState("");
     const [results, setResults] = useState([]);
     const [conversations, setConversations] = useState([]);
-    const [unreadMap, setUnreadMap] = useState({}); // { [conversationId]: { count, lastMessage } }
+    const [unreadMap, setUnreadMap] = useState(() => {
+        // Load unread counts from localStorage on initialization
+        try {
+            const saved = localStorage.getItem('unreadCounts');
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            console.error('Error loading unread counts from localStorage');
+            return {};
+        }
+    });
     const [collapsed, setCollapsed] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -24,6 +33,15 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
     useEffect(() => {
         selectedConversationRef.current = selectedConversation;
     }, [selectedConversation]);
+
+    // Save unread counts to localStorage whenever they change
+    useEffect(() => {
+        try {
+            localStorage.setItem('unreadCounts', JSON.stringify(unreadMap));
+        } catch (error) {
+            console.error('Error saving unread counts to localStorage:', error);
+        }
+    }, [unreadMap]);
 
     // Get user data from Redux - use user reducer for profile data
     const userData = useSelector((state) => state.user?.data);
@@ -54,13 +72,11 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
         const currentUserId = getUserId();
         const isFromCurrentUser = msg.sender?._id === currentUserId || msg.sender === currentUserId;
 
+        // Update conversations list
         setConversations(prev => {
-            console.log(`🔍 Current conversations count: ${prev.length}`);
             const existingConv = prev.find(conv => conv._id === msg.conversationId);
-            console.log(`🔍 Found existing conversation: ${existingConv ? 'YES' : 'NO'}`);
 
             if (existingConv) {
-                console.log("✅ Updating existing conversation in sidebar");
                 // Update existing conversation
                 const updated = prev
                     .map(conv => {
@@ -74,55 +90,32 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
                         return conv;
                     })
                     .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-                console.log("🔄 Conversations reordered after message");
                 return updated;
             } else {
-                console.log("⚠️ Conversation not found in sidebar, fetching all conversations");
-                // If conversation doesn't exist, fetch updated conversations
-                API.getConversations()
-                    .then((res) => {
-                        const conversations = res.data.conversations || [];
-                        console.log(`✅ Fetched ${conversations.length} conversations after missing conversation`);
-                        setConversations(conversations);
-
-                        // Join the conversation room for real-time updates
-                        if (msg.conversationId) {
-                            joinConversation(msg.conversationId);
-                            console.log(`🔗 Joined conversation room: ${msg.conversationId}`);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("❌ Error fetching conversations:", error);
-                    });
+                // If conversation doesn't exist, it will be handled by fetchConversationsAndUnreadCounts
                 return prev;
             }
         });
 
         // Update unread map unless this conversation is currently selected
         // or the message is from the current user
-        setUnreadMap(prev => {
-            // Don't increment unread count if:
-            // 1. This conversation is currently selected
-            // 2. The message is from the current user
-            if ((selectedConversation && selectedConversation._id === msg.conversationId) || isFromCurrentUser) {
-                return prev;
-            }
-
-            const prevEntry = prev[msg.conversationId] || { count: 0, lastMessage: null };
-            return {
-                ...prev,
-                [msg.conversationId]: {
+        if (!isFromCurrentUser && (!selectedConversation || selectedConversation._id !== msg.conversationId)) {
+            setUnreadMap(prev => {
+                const prevEntry = prev[msg.conversationId] || { count: 0, lastMessage: null };
+                const newEntry = {
                     count: prevEntry.count + 1,
                     lastMessage: msg
-                }
-            };
-        });
+                };
 
-        // If this is a new message and not from current user, play notification sound
-        // This is a common WhatsApp feature
-        if (!isFromCurrentUser && msg.conversationId) {
+                console.log(`📊 Updated unread count for ${msg.conversationId}: ${newEntry.count}`);
+                return {
+                    ...prev,
+                    [msg.conversationId]: newEntry
+                };
+            });
+
+            // Play notification sound for new messages
             try {
-                // Create a simple notification sound using the Web Audio API
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
@@ -135,77 +128,13 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
                 gainNode.connect(audioContext.destination);
 
                 oscillator.start();
-
-                // Short notification sound
-                setTimeout(() => {
-                    oscillator.stop();
-                }, 200);
+                setTimeout(() => oscillator.stop(), 200);
             } catch (error) {
                 console.log('Could not play notification sound');
             }
         }
     }
 
-    // Helper function to update conversations when a conversation is updated
-    function handleConversationUpdated(data, setConversations) {
-        console.log("🔄 handleConversationUpdated called with:", data);
-
-        if (!data || !data.conversationId) {
-            console.error("Invalid conversation update data:", data);
-            return;
-        }
-
-        setConversations(prev => {
-            // Check if the conversation exists in the current list
-            const existingConv = prev.find(conv => conv._id === data.conversationId);
-
-            if (existingConv) {
-                console.log("✅ Updating existing conversation in sidebar");
-                // Update existing conversation
-                return prev
-                    .map(conv => {
-                        if (conv._id === data.conversationId) {
-                            return {
-                                ...conv,
-                                lastMessage: data.lastMessage || conv.lastMessage,
-                                lastActivity: data.lastActivity || new Date().toISOString()
-                            };
-                        }
-                        return conv;
-                    })
-                    .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-            } else {
-                console.log("⚠️ Conversation not found in sidebar, fetching all conversations");
-                // If conversation doesn't exist, fetch updated conversations
-                API.getConversations()
-                    .then((res) => {
-                        const conversations = res.data.conversations || [];
-                        console.log(`✅ Fetched ${conversations.length} conversations after update event`);
-                        setConversations(conversations);
-
-                        // Join the conversation room for real-time updates
-                        if (data.conversationId) {
-                            joinConversation(data.conversationId);
-                            console.log(`🔗 Joined conversation room: ${data.conversationId}`);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("❌ Error fetching conversations:", error);
-                    });
-                return prev;
-            }
-        });
-    }
-
-    // Helper function to handle message seen event
-    function handleMessageSeen(data, setUnreadMap) {
-        if (data.conversationId) {
-            setUnreadMap(prev => ({
-                ...prev,
-                [data.conversationId]: { count: 0, lastMessage: null }
-            }));
-        }
-    }
 
     // Helper function to handle when user sends a message (move conversation to top)
     function handleUserMessageSent(messageData, setConversations) {
@@ -280,38 +209,76 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
         });
     }
 
-    useEffect(() => {
-        // Fetch conversations on mount
-        API.getConversations()
-            .then((res) => {
-                const conversations = res.data.conversations || [];
-                setConversations(conversations);
+    // Consolidated function to fetch conversations and initialize unread counts
+    const fetchConversationsAndUnreadCounts = async () => {
+        try {
+            const res = await API.getConversations();
+            const conversations = res.data.conversations || [];
+            setConversations(conversations);
 
-                // Join all conversation rooms to receive real-time updates
-                conversations.forEach(conv => {
-                    joinConversation(conv._id);
-                });
+            // Join all conversation rooms to receive real-time updates
+            conversations.forEach(conv => {
+                joinConversation(conv._id);
+            });
 
-                // Initialize unread counts based on conversation data
-                const initialUnreadMap = {};
-                const userId = getUserId();
+            // Initialize unread counts by fetching messages for each conversation
+            const userId = getUserId();
+            const initialUnreadMap = {};
 
-                conversations.forEach(conv => {
-                    // If conversation has unread count from server, use it
-                    if (conv.unreadCount && conv.unreadCount > 0) {
+            // Fetch messages for all conversations to count unread
+            await Promise.all(conversations.map(async (conv) => {
+                try {
+                    const msgRes = await API.fetchMessages({ conversationId: conv._id });
+                    const messages = msgRes.data.messages || [];
+
+                    // Count messages not seen by current user and not sent by current user
+                    const unseen = messages.filter(msg => {
+                        if (!msg.sender || !msg.sender._id) return false;
+                        if (msg.sender._id === userId) return false;
+
+                        // For group chats, check seenBy array
+                        if (Array.isArray(msg.seenBy) && msg.seenBy.length > 0) {
+                            return !msg.seenBy.some(entry => entry.user === userId);
+                        }
+                        // For direct chats, use 'seen' boolean
+                        return !msg.seen;
+                    }).length;
+
+                    if (unseen > 0) {
+                        // Find the last unseen message for display
+                        const lastUnseenMsg = [...messages].reverse().find(msg => {
+                            if (!msg.sender || !msg.sender._id) return false;
+                            if (msg.sender._id === userId) return false;
+                            if (Array.isArray(msg.seenBy) && msg.seenBy.length > 0) {
+                                return !msg.seenBy.some(entry => entry.user === userId);
+                            }
+                            return !msg.seen;
+                        });
+
                         initialUnreadMap[conv._id] = {
-                            count: conv.unreadCount,
-                            lastMessage: conv.lastMessage
+                            count: unseen,
+                            lastMessage: lastUnseenMsg || conv.lastMessage
                         };
                     }
-                });
+                } catch (error) {
+                    console.error(`Error fetching messages for conversation ${conv._id}:`, error);
+                }
+            }));
 
-                setUnreadMap(initialUnreadMap);
-            })
-            .catch(() => setConversations([]));
+            setUnreadMap(initialUnreadMap);
+            console.log('📊 Initialized unread counts:', initialUnreadMap);
+        } catch (error) {
+            console.error('Error fetching conversations:', error);
+            setConversations([]);
+        }
+    };
+
+    useEffect(() => {
+        // Fetch conversations and unread counts on mount
+        fetchConversationsAndUnreadCounts();
     }, [getUserId]);
 
-    // SIMPLIFIED APPROACH: Single useEffect for all socket and refresh logic
+    // Simplified socket event handling
     useEffect(() => {
         const token = localStorage.getItem("token");
         const userId = getUserId();
@@ -321,85 +288,71 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
             return;
         }
 
-        console.log("🔄 Setting up global message listener and refresh mechanism");
-
-        // Function to refresh conversations - we'll use this everywhere
-        const refreshConversations = () => {
-            console.log("🔄 Refreshing conversations list");
-            API.getConversations()
-                .then((res) => {
-                    const conversations = res.data.conversations || [];
-                    console.log(`✅ Fetched ${conversations.length} conversations`);
-                    setConversations(conversations);
-
-                    // Join all conversation rooms
-                    conversations.forEach(conv => {
-                        joinConversation(conv._id);
-                    });
-                })
-                .catch((error) => {
-                    console.error("❌ Error fetching conversations:", error);
-                });
-        };
+        console.log("🔄 Setting up socket event listeners");
 
         // Connect to socket
         const socket = connectSocket(token, userId);
 
-        // GLOBAL MESSAGE LISTENER - This is the key to our solution
-        // We'll refresh the entire sidebar whenever ANY socket event happens
-        socket.onAny((event) => {
-            console.log(`🔔 Socket event received: ${event}`);
+        // Handle new messages
+        socket.on("messageReceived", (msg) => {
+            console.log("📨 New message received:", msg);
 
-            // These events should trigger a sidebar refresh
-            const refreshEvents = [
-                "messageReceived",
-                "conversationUpdated",
-                "newConversationVisible",
-                "conversationBecameVisible",
-                "newConversationCreated"
-            ];
+            // Update conversations and unread counts
+            handleMessageReceived(msg, setConversations, setUnreadMap, selectedConversationRef.current, API, getUserId);
 
-            if (refreshEvents.includes(event)) {
-                console.log(`🔄 Refreshing sidebar due to ${event} event`);
-                refreshConversations();
+            // Refresh conversations to get latest data
+            fetchConversationsAndUnreadCounts();
+        });
+
+        // Handle messages marked as seen
+        socket.on("messagesSeen", (data) => {
+            if (data.conversationId) {
+                console.log("👁️ Messages marked as seen:", data);
+                setUnreadMap(prev => ({
+                    ...prev,
+                    [data.conversationId]: { count: 0, lastMessage: null }
+                }));
+
+                // Update localStorage
+                try {
+                    const saved = localStorage.getItem('unreadCounts');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        delete parsed[data.conversationId];
+                        localStorage.setItem('unreadCounts', JSON.stringify(parsed));
+                    }
+                } catch (error) {
+                    console.error('Error updating localStorage:', error);
+                }
             }
         });
 
-        // Listen for the global update event - this is our most reliable trigger
+        // Handle global updates
         socket.on("globalUpdate", (data) => {
             console.log("🌎 Global update received:", data);
-            refreshConversations();
+            fetchConversationsAndUnreadCounts();
         });
 
-        // Also refresh when a message is received (most important case)
-        socket.on("messageReceived", (msg) => {
-            console.log("📨 Message received, refreshing sidebar");
-            refreshConversations();
-
-            // Process the message for unread counts
-            handleMessageReceived(msg, setConversations, setUnreadMap, selectedConversationRef.current, API, getUserId);
+        // Handle conversation updates
+        socket.on("conversationUpdated", (data) => {
+            console.log("🔄 Conversation updated:", data);
+            fetchConversationsAndUnreadCounts();
         });
 
         // Refresh when window gets focus
         const handleFocus = () => {
             console.log("🔄 Window focused, refreshing conversations");
-            refreshConversations();
+            fetchConversationsAndUnreadCounts();
         };
 
         window.addEventListener('focus', handleFocus);
 
-        // Initial refresh
-        refreshConversations();
-
-        // Set up periodic refresh every 10 seconds as a fallback
-        const refreshInterval = setInterval(refreshConversations, 10000);
-
         return () => {
             window.removeEventListener('focus', handleFocus);
-            clearInterval(refreshInterval);
-            socket.offAny();
             socket.off("messageReceived");
+            socket.off("messagesSeen");
             socket.off("globalUpdate");
+            socket.off("conversationUpdated");
         };
     }, [getUserId]);
 
@@ -447,60 +400,29 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
 
 
 
-    // Reset unread count in UI when a conversation is opened
-    // This provides immediate visual feedback while the MessageList handles actual "mark as seen"
+    // Reset unread count when a conversation is opened
+    // This provides immediate visual feedback and persists the change
     useEffect(() => {
         if (selectedConversation?._id) {
             setUnreadMap(prev => ({
                 ...prev,
                 [selectedConversation._id]: { count: 0, lastMessage: null }
             }));
+
+            // Also clear from localStorage to ensure persistence
+            try {
+                const saved = localStorage.getItem('unreadCounts');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    delete parsed[selectedConversation._id];
+                    localStorage.setItem('unreadCounts', JSON.stringify(parsed));
+                }
+            } catch (error) {
+                console.error('Error clearing unread count from localStorage:', error);
+            }
         }
     }, [selectedConversation]);
 
-    // On login/mount, fetch all messages for each conversation and count unseen for the current user
-    useEffect(() => {
-        API.getConversations().then(async res => {
-            const conversations = res.data.conversations || [];
-            setConversations(conversations);
-            const userId = getUserId();
-            const initialUnreadMap = {};
-            // For each conversation, fetch messages and count unseen
-            await Promise.all(conversations.map(async (conv) => {
-                try {
-                    const msgRes = await API.fetchMessages({ conversationId: conv._id });
-                    const messages = msgRes.data.messages || [];
-                    // Count messages not seen by user and not sent by user
-                    const unseen = messages.filter(msg => {
-                        if (!msg.sender || !msg.sender._id) return false;
-                        if (msg.sender._id === userId) return false;
-                        // For group chats, check seenBy array
-                        if (Array.isArray(msg.seenBy) && msg.seenBy.length > 0) {
-                            return !msg.seenBy.some(entry => entry.user === userId);
-                        }
-                        // For direct chats, use 'seen' boolean
-                        return !msg.seen;
-                    }).length;
-                    if (unseen > 0) {
-                        // Find the last unseen message for display
-                        const lastUnseenMsg = [...messages].reverse().find(msg => {
-                            if (!msg.sender || !msg.sender._id) return false;
-                            if (msg.sender._id === userId) return false;
-                            if (Array.isArray(msg.seenBy) && msg.seenBy.length > 0) {
-                                return !msg.seenBy.some(entry => entry.user === userId);
-                            }
-                            return !msg.seen;
-                        });
-                        initialUnreadMap[conv._id] = {
-                            count: unseen,
-                            lastMessage: lastUnseenMsg || conv.lastMessage
-                        };
-                    }
-                } catch { }
-            }));
-            setUnreadMap(initialUnreadMap);
-        });
-    }, [getUserId]);
 
     // Handle when user sends a message (to move conversation to top)
     useEffect(() => {

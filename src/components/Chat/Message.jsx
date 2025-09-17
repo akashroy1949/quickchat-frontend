@@ -49,12 +49,12 @@ StatusIcon.propTypes = {
 
 const Message = ({ message, currentUserId, conversationId, isContinuation = false, onMessageUpdate }) => {
     // Ensure we have a valid currentUserId and message sender
-    const isOwnMessage = currentUserId && message.sender?._id && message.sender._id === currentUserId;
+    const isOwnMessage = currentUserId && currentUserId.trim() !== '' && message.sender?._id && String(message.sender._id) === String(currentUserId);
 
-    // Debug logging for message alignment issues
+    // Debug logging for message alignment issues (only when currentUserId is missing)
     React.useEffect(() => {
-        if (!currentUserId) {
-            console.warn("⚠️ Message component: currentUserId is undefined/null", { currentUserId, messageId: message._id });
+        if (!currentUserId || currentUserId.trim() === '') {
+            console.warn("⚠️ Message component: currentUserId is undefined/null/empty", { currentUserId, messageId: message._id });
         }
         if (!message.sender?._id) {
             console.warn("⚠️ Message component: message.sender._id is undefined/null", { messageId: message._id, message });
