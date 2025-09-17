@@ -417,6 +417,60 @@ body {
     @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all duration-300 hover:scale-105;
 }
 
+/* Message actions animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.message-options {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.reaction-picker {
+    animation: scaleIn 0.2s ease-out;
+}
+
+.message-highlight {
+    transition: background-color 0.5s ease;
+}
+
+.message-highlight-active {
+    background-color: rgba(234, 179, 8, 0.2);
+}
+
+/* Pinned message animation */
+@keyframes pinPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+    }
+}
+
+.pin-pulse {
+    animation: pinPulse 2s infinite;
+}
+
 /* Performance optimizations */
 .will-change-transform {
     will-change: transform;

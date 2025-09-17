@@ -94,7 +94,7 @@ const ChatScreen = () => {
     };
 
     return (
-        <div className="flex h-screen bg-dark-bg overflow-hidden">
+        <div className="flex h-screen bg-gray-900 overflow-hidden w-full">
             <Sidebar
                 ref={sidebarRef}
                 onUserClick={handleUserClick}
@@ -110,7 +110,7 @@ const ChatScreen = () => {
             ) : (
                 <div className="flex-1 flex items-center justify-center bg-gray-900 text-gray-400">
                     <div className="text-center p-8">
-                        <BsChatLeftTextFill className="mx-auto text-gray-700 mb-4" size={64} />
+                        <BsChatLeftTextFill className="mx-auto text-gray-600 mb-4" size={64} />
                         <h2 className="text-xl font-semibold mb-2">Welcome to QuickChat</h2>
                         <p className="max-w-md">
                             Select a conversation from the sidebar or start a new chat to begin messaging.

@@ -6,6 +6,7 @@ import API from "@/services/api";
 import { connectSocket, joinConversation, disconnectSocket } from "@/services/socket";
 import PropTypes from "prop-types";
 import { performLogout } from "@/redux/actions/Login/logoutAction";
+import { fetchUserProfile } from "@/redux/actions/User/userProfileAction";
 
 const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedConversation, onMessageSent }, ref) => {
     const [searchOpen, setSearchOpen] = useState(false);
@@ -24,8 +25,12 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
         selectedConversationRef.current = selectedConversation;
     }, [selectedConversation]);
 
-    // Get user data from Redux as fallback
+    // Get user data from Redux - use user reducer for profile data
+    const userData = useSelector((state) => state.user?.data);
     const loginData = useSelector((state) => state.loginUser);
+
+    // Get dispatch for user profile actions - must be declared before useEffect
+    const dispatch = useDispatch();
 
     // Helper function to get userId
     const getUserId = React.useCallback(() => {
@@ -521,9 +526,25 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
         }
     }, [onMessageSent]);
 
-    // Get user data from Redux
-    const userData = useSelector((state) => state.loginUser?.data?.data);
-    const dispatch = useDispatch();
+    // Fetch user profile data when component mounts or when user logs in
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId");
+
+        // Only fetch profile if we have authentication data and no user data yet
+        if (token && userId && !userData) {
+            console.log("Fetching user profile data...");
+            dispatch(fetchUserProfile(
+                (data) => {
+                    console.log("User profile fetched successfully:", data);
+                },
+                (error) => {
+                    console.error("Failed to fetch user profile:", error);
+                }
+            ));
+        }
+    }, [dispatch, userData]);
+
 
     // Toggle sidebar collapse
     const toggleSidebar = () => {
@@ -571,7 +592,7 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
     };
 
     return (
-        <div className={`${collapsed ? 'w-16' : 'w-80'} bg-gray-900 text-white flex flex-col border-r border-gray-800 transition-all duration-300 relative h-full`}>
+        <div className={`${collapsed ? 'w-16' : 'w-80'} bg-gray-900 text-white flex flex-col border-r border-gray-700 transition-all duration-300 relative h-full`}>
             {/* Collapse toggle button */}
             <button
                 onClick={toggleSidebar}

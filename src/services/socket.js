@@ -136,3 +136,47 @@ export function requestConversationsRefresh() {
         socket.emit("requestConversationsRefresh");
     }
 }
+
+// Functions for message actions
+export function notifyMessageEdited(messageId, content, conversationId) {
+    if (socket && messageId && conversationId) {
+        socket.emit("messageEdited", {
+            messageId,
+            content,
+            isEdited: true,
+            editedAt: new Date().toISOString(),
+            conversation: conversationId
+        });
+    }
+}
+
+export function notifyMessageDeleted(messageId, conversationId) {
+    if (socket && messageId && conversationId) {
+        socket.emit("messageDeleted", {
+            messageId,
+            conversation: conversationId
+        });
+    }
+}
+
+export function notifyMessagePinned(messageId, isPinned, pinnedBy, conversationId) {
+    if (socket && messageId && conversationId) {
+        socket.emit("messagePinned", {
+            messageId,
+            isPinned,
+            pinnedAt: isPinned ? new Date().toISOString() : null,
+            pinnedBy,
+            conversation: conversationId
+        });
+    }
+}
+
+export function notifyMessageReaction(messageId, reactions, conversationId) {
+    if (socket && messageId && conversationId) {
+        socket.emit("messageReaction", {
+            messageId,
+            reactions,
+            conversation: conversationId
+        });
+    }
+}
