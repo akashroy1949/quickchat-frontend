@@ -339,6 +339,12 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
             fetchConversationsAndUnreadCounts();
         });
 
+        // Handle message deleted events
+        socket.on("messageDeleted", (data) => {
+            console.log("🗑️ Message deleted, refreshing conversations:", data);
+            fetchConversationsAndUnreadCounts();
+        });
+
         // Refresh when window gets focus
         const handleFocus = () => {
             console.log("🔄 Window focused, refreshing conversations");
@@ -353,6 +359,7 @@ const Sidebar = React.forwardRef(({ onUserClick, onConversationClick, selectedCo
             socket.off("messagesSeen");
             socket.off("globalUpdate");
             socket.off("conversationUpdated");
+            socket.off("messageDeleted");
         };
     }, [getUserId]);
 
